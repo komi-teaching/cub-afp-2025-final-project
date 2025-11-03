@@ -3,41 +3,42 @@ import LocalLang.Evaluator
 import LocalLang.Ctx
 import Mathlib.Logic.Relation
 
--- for rewriting (.funCall f es) in terms of let
-def Expr.addBindings (vars : List (String × Expr)) (e : Expr) : Expr :=
-  vars.foldl (fun e' (x, xe) => .letIn x xe e') e
+inductive Ctx : Type where
+  | hole : Ctx
+  | bin_op_lhs : Ctx → BinOp → Expr → Ctx
+  | bin_op_rhs : ℕ → BinOp → Ctx → Ctx
+  | fun_call : String → List ℕ → Ctx → List Expr → Ctx
 
-inductive HeadSmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
+def Ctx.fill (e : Expr) : Ctx → Expr
+  | hole => e
+  | bin_op_lhs ctx op e' => Expr.binOp op (ctx.fill e) e'
+  | bin_op_rhs n op ctx => Expr.binOp op (.const n) (ctx.fill e)
+  | fun_call f es_left ctx es_right =>
+      Expr.funCall f ((.const ·) <$> es_left ++ [ctx.fill e] ++ es_right)
+
+abbrev VarContext := Std.HashMap String ℕ
+
+-- TODO: define
+inductive SmallStep (defs : Definitions) : (VarContext × Expr) → (VarContext × Expr) → Prop where
   | var_step : V[x]? = some n →
-      HeadSmallStep defs V (.var x) (.const n)
-  | bin_op_step {op : BinOp}
-      : n = op.eval e₁ e₂
-      → HeadSmallStep defs V (.binOp op (.const e₁) (.const e₂)) (.const n)
-  | let_in_const_step {name : String} {n₁ n₂ : ℕ}
-      : HeadSmallStep defs V (.letIn name (.const n₁) (.const n₂)) (.const n₂)
-  | fun_step {f : String} {es : List Expr} {ps : List String} {bd : Expr}
-      : (h_f : f ∈ defs)
-      → (ps = defs[f].parameters)
-      → (bd = defs[f].body)
-      → (r = bd.addBindings (ps.zip es))
-      → (ps.length = es.length)
-      → HeadSmallStep defs V (.funCall f es) r
+      SmallStep defs (V, (.var x)) (V, .const n)
+  | bin_op_step {op : BinOp} :
+      SmallStep defs (V, .binOp op (.const e₁) (.const e₂)) (V, .const <| op.eval e₁ e₂)
+  | ctx_step (ctx : Ctx) : SmallStep defs (V, e₁) (V, e₂) →
+      SmallStep defs (V, ctx.fill e₁) (V, ctx.fill e₂)
+  | fun_step {es : List ℕ} {func : Function} (Hf : defs.find? (·.name = f) = some func)
+      (Hpn : func.parameters.length = es.length):
+      SmallStep defs
+        (V, .funCall f <| (.const ·) <$> es)
+        (.ofList <| V.toList ++ func.parameters.zip es, func.body)
 
-inductive SmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
-  | ctx_step (ctx : Ctx) {V : Env}
-      : (e₁' = ctx.fill e₁) → (e₂' = ctx.fill e₂)
-      → HeadSmallStep defs (ctx.updateEnv V) e₁ e₂
-      → SmallStep defs V e₁' e₂'
-
-abbrev SmallSteps (defs : Definitions) (env : Env) : Expr → Expr → Prop :=
-  Relation.ReflTransGen (SmallStep defs env)
-
-def SmallSteps.single {defs : Definitions} {env : Env} :
-    SmallStep defs env e₁ e₂ → SmallSteps defs env e₁ e₂ := by
-  intro step
-  exact Relation.ReflTransGen.single step
+-- TODO: define
+inductive SmallSteps (defs : Definitions) : (VarContext × Expr) → (VarContext × Expr) → Prop where
+  | trivial : SmallSteps defs (V, e) (V, e)
+  | cons : SmallStep defs (V₁, e₁) (V₂, e₂) → SmallSteps defs (V₂, e₂) (V₃, e₃) →
+      SmallSteps defs (V₁, e₁) (V₃, e₃)
 
 -- TODO: prove
 theorem smallSteps_diamond {defs : Definitions} {e₁ e₂ e₃ : Expr}
-  (HA : SmallSteps defs V e₁ e₂) (HB : SmallSteps defs V e₁ e₃)
-  :  ∃ e₄, SmallSteps defs V e₂ e₄ ∧ SmallSteps defs V e₃ e₄ := sorry
+  (HA : SmallSteps defs (V₁, e₁) (V₂, e₂)) (HB : SmallSteps defs (V₁, e₁) (V₃, e₃))
+  :  ∃ V₄ e₄, SmallSteps defs (V₂, e₂) (V₄, e₄) ∧ SmallSteps defs (V₃, e₃) (V₄, e₄) := sorry
