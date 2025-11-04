@@ -8,15 +8,15 @@ def letin_chain (vars : List (String × Expr)) (e : Expr) : Expr :=
   vars.foldl (fun e' (x, xe) => .letIn x xe e') e
 
 inductive SmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
-  | var_step : V[x]? = some n →
+  | varStep : V[x]? = some n →
       SmallStep defs V (.var x) (.const n)
-  | bin_op_step {op : BinOp} :
+  | binOpStep {op : BinOp} :
       SmallStep defs V (.binOp op (.const e₁) (.const e₂)) (.const (op.eval e₁ e₂))
-  | ctx_step (ctx : Ctx) (V : Env) : SmallStep defs (ctx.updateEnv V) e₁ e₂ →
+  | ctxStep (ctx : Ctx) (V : Env) : SmallStep defs (ctx.updateEnv V) e₁ e₂ →
       SmallStep defs V (ctx.fill e₁) (ctx.fill e₂)
-  | letin_const_step {name : String} {val n : ℕ} :
+  | letinConstStep {name : String} {val n : ℕ} :
       SmallStep defs V (.letIn name (.const val) (.const n)) (.const n)
-  | fun_step {ps : List String} {body : Expr} {es : List Expr}
+  | funStep {ps : List String} {body : Expr} {es : List Expr}
       (Hf : f ∈ defs) (Hpn : ps.length = es.length) :
       SmallStep defs V (.funCall f es) (letin_chain (defs[f].parameters.zip es) defs[f].body)
 
