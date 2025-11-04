@@ -91,5 +91,8 @@ def step₈ : SmallStep [f, g] ∅ e₈ e₉ :=
 def step₉ : SmallStep [f, g] ∅ e₉ e₁₀ :=
   .letin_const_step
 
+-- def steps : SmallSteps [f, g] ∅ e₁ (.const 1) :=
+--   [step₁, step₂, step₃, step₄, step₅, step₆, step₇, step₈, step₉].foldr
+--   (fun st sts => Relation.ReflTransGen.tail sts st) Relation.ReflTransGen.refl
 def steps : SmallSteps [f, g] ∅ e₁ (.const 1) := .cons step₁ <| .cons step₂ <| .cons step₃ <|
   .cons step₄ <| .cons step₅ <| .cons step₆ <| .cons step₇ <| .cons step₈ <| .cons step₉ <| .trivial
