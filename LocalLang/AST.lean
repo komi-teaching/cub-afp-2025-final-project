@@ -13,7 +13,6 @@ inductive Expr where
   | funCall (f : String) (es : List Expr)
 
 structure Function where
-  name : String
   parameters : List String
   body : Expr
 
