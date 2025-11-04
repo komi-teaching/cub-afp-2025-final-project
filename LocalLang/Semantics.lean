@@ -28,7 +28,30 @@ def SmallSteps.single {defs : Definitions} {env : Env} :
   intro step
   exact Relation.ReflTransGen.single step
 
+theorem smallStep_deterministic {defs : Definitions}
+  (HA : SmallStep defs V e₁ e₂) (HB : SmallStep defs V e₁ e₃) : e₂ = e₃ := by cases e₁ with
+  | const n => sorry
+  | var x => sorry
+  | binOp op e₁ e₂ => sorry
+  | letIn x e₁ e₂ => sorry
+  | funCall f es => sorry
+
 -- TODO: prove
 theorem smallSteps_diamond {defs : Definitions} {e₁ e₂ e₃ : Expr}
-  (HA : SmallSteps defs V e₁ e₂) (HB : SmallSteps defs V e₁ e₃)
-  :  ∃ e₄, SmallSteps defs V e₂ e₄ ∧ SmallSteps defs V e₃ e₄ := sorry
+  : SmallSteps defs V e₁ e₂ → SmallSteps defs V e₁ e₃ →
+    ∃ e₄, SmallSteps defs V e₂ e₄ ∧ SmallSteps defs V e₃ e₄ := by
+  intro HA HB
+  induction HA : HA generalizing e₃ HB with
+  | refl => exists e₃
+  | tail asts ast ih => {
+      rename_i e₁' e₂' e₃'
+      cases HB with
+      | refl => {
+        exists e₂'
+      }
+      | tail bsts bst => {
+        rename_i e₁''
+        let ⟨e₄, ⟨asts', bsts'⟩⟩ := ih asts bsts (by rfl)
+        sorry
+      }
+  }
