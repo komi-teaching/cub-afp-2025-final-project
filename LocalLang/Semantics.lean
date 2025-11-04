@@ -24,13 +24,13 @@ inductive SmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
       (Hf : f ∈ defs) (Hpn : ps.length = es.length) :
       SmallStep defs V (.funCall f es) (letin_chain (defs[f].parameters.zip es) defs[f].body)
 
-inductive SmallSteps (defs : Definitions) : Env → Expr → Expr → Prop where
-  | trivial : SmallSteps defs V e e
-  | cons : SmallStep defs V e₁ e₂ → SmallSteps defs V e₂ e₃ →
-      SmallSteps defs V e₁ e₃
+abbrev SmallSteps (defs : Definitions) (env : Env) : Expr → Expr → Prop :=
+  Relation.ReflTransGen (SmallStep defs env)
 
--- abbrev SmallSteps (defs : Definitions) (env : Env) : Expr → Expr → Prop :=
---   Relation.ReflTransGen (SmallStep defs env)
+def SmallSteps.single {defs : Definitions} {env : Env} :
+    SmallStep defs env e₁ e₂ → SmallSteps defs env e₁ e₂ := by
+  intro step
+  exact Relation.ReflTransGen.single step
 
 -- TODO: prove
 theorem smallSteps_diamond {defs : Definitions} {e₁ e₂ e₃ : Expr}

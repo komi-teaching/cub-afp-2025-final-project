@@ -43,7 +43,6 @@ def e₆ : Expr := .letIn "x" (.const 0) f_body₅
 def e₇ : Expr := .letIn "x" (.const 0) f_body₆
 def e₈ : Expr := .letIn "x" (.const 0) f_body₇
 def e₉ : Expr := .letIn "x" (.const 0) f_body₈
-def e₁₀ : Expr := .const 1
 
 def defs_list := [("f", f), ("g", g)]
 def defs := Std.HashMap.ofList defs_list
@@ -105,11 +104,19 @@ def step₇ : SmallStep defs ∅ e₇ e₈ :=
   .letin_cong <| .ctx_step (.binOpRhs 1 .add .hole) (.var_step (by simp))
 def step₈ : SmallStep defs ∅ e₈ e₉ :=
   .letin_cong <| .bin_op_step
-def step₉ : SmallStep defs ∅ e₉ e₁₀ :=
+def step₉ : SmallStep defs ∅ e₉ (.const 1) :=
   .letin_const_step
 
--- def steps : SmallSteps defs ∅ e₁ (.const 1) :=
---   [step₁, step₂, step₃, step₄, step₅, step₆, step₇, step₈, step₉].foldr
---   (fun st sts => Relation.ReflTransGen.tail sts st) Relation.ReflTransGen.refl
-def steps : SmallSteps defs ∅ e₁ (.const 1) := .cons step₁ <| .cons step₂ <| .cons step₃ <|
-  .cons step₄ <| .cons step₅ <| .cons step₆ <| .cons step₇ <| .cons step₈ <| .cons step₉ <| .trivial
+infixr:100 " ~> " => SmallSteps defs ∅
+
+def steps : e₁ ~> (.const 1) := by
+  calc
+    e₁ ~> e₂ := SmallSteps.single step₁
+    e₂ ~> e₃ := SmallSteps.single step₂
+    e₃ ~> e₄ := SmallSteps.single step₃
+    e₄ ~> e₅ := SmallSteps.single step₄
+    e₅ ~> e₆ := SmallSteps.single step₅
+    e₆ ~> e₇ := SmallSteps.single step₆
+    e₇ ~> e₈ := SmallSteps.single step₇
+    e₈ ~> e₉ := SmallSteps.single step₈
+    e₉ ~> (.const 1) := SmallSteps.single step₉
