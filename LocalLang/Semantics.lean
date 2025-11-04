@@ -1,44 +1,48 @@
 import LocalLang.AST
 import LocalLang.Evaluator
-import LocalLang.Ctx
-import Mathlib.Logic.Relation
 
 inductive Ctx : Type where
   | hole : Ctx
   | bin_op_lhs : Ctx → BinOp → Expr → Ctx
   | bin_op_rhs : ℕ → BinOp → Ctx → Ctx
-  | fun_call : String → List ℕ → Ctx → List Expr → Ctx
+  | letin : String → Ctx → Expr → Ctx
 
 def Ctx.fill (e : Expr) : Ctx → Expr
   | hole => e
   | bin_op_lhs ctx op e' => Expr.binOp op (ctx.fill e) e'
   | bin_op_rhs n op ctx => Expr.binOp op (.const n) (ctx.fill e)
-  | fun_call f es_left ctx es_right =>
-      Expr.funCall f ((.const ·) <$> es_left ++ [ctx.fill e] ++ es_right)
+  | letin x ctx e' => .letIn x (ctx.fill e) e'
 
-abbrev VarContext := Std.HashMap String ℕ
+abbrev Env := Std.HashMap String ℕ
+
+-- .funCall f
+def letin_chain (vars : List (String × Expr)) (e : Expr) : Expr := match vars with
+  | .nil => e
+  | .cons (name, expr) vs => .letIn name expr <| letin_chain vs e
 
 -- TODO: define
-inductive SmallStep (defs : Definitions) : (VarContext × Expr) → (VarContext × Expr) → Prop where
+inductive SmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
   | var_step : V[x]? = some n →
-      SmallStep defs (V, (.var x)) (V, .const n)
+      SmallStep defs V (.var x) (.const n)
   | bin_op_step {op : BinOp} :
-      SmallStep defs (V, .binOp op (.const e₁) (.const e₂)) (V, .const <| op.eval e₁ e₂)
-  | ctx_step (ctx : Ctx) : SmallStep defs (V, e₁) (V, e₂) →
-      SmallStep defs (V, ctx.fill e₁) (V, ctx.fill e₂)
-  | fun_step {es : List ℕ} {func : Function} (Hf : defs.find? (·.name = f) = some func)
-      (Hpn : func.parameters.length = es.length):
-      SmallStep defs
-        (V, .funCall f <| (.const ·) <$> es)
-        (.ofList <| V.toList ++ func.parameters.zip es, func.body)
+      SmallStep defs V (.binOp op (.const e₁) (.const e₂)) (.const <| op.eval e₁ e₂)
+  | ctx_step (ctx : Ctx) : SmallStep defs V e₁ e₂ →
+      SmallStep defs V (ctx.fill e₁) (ctx.fill e₂)
+  | letin_cong {name : String} {val : ℕ} : SmallStep defs (V.insert name val) e₁ e₂ →
+      SmallStep defs V (.letIn name (.const val) e₁) (.letIn name (.const val) e₂)
+  | letin_const_step {name : String} {val n : ℕ} :
+      SmallStep defs V (.letIn name (.const val) (.const n)) (.const n)
+  | fun_step {ps : List String} {body : Expr} {es : List Expr}
+      (Hf : ⟨f, ps, body⟩ ∈ defs) (Hpn : ps.length = es.length) :
+      SmallStep defs V (.funCall f es) (letin_chain (ps.zip es) body)
 
 -- TODO: define
-inductive SmallSteps (defs : Definitions) : (VarContext × Expr) → (VarContext × Expr) → Prop where
-  | trivial : SmallSteps defs (V, e) (V, e)
-  | cons : SmallStep defs (V₁, e₁) (V₂, e₂) → SmallSteps defs (V₂, e₂) (V₃, e₃) →
-      SmallSteps defs (V₁, e₁) (V₃, e₃)
+inductive SmallSteps (defs : Definitions) : Env → Expr → Expr → Prop where
+  | trivial : SmallSteps defs V e e
+  | cons : SmallStep defs V e₁ e₂ → SmallSteps defs V e₂ e₃ →
+      SmallSteps defs V e₁ e₃
 
 -- TODO: prove
 theorem smallSteps_diamond {defs : Definitions} {e₁ e₂ e₃ : Expr}
-  (HA : SmallSteps defs (V₁, e₁) (V₂, e₂)) (HB : SmallSteps defs (V₁, e₁) (V₃, e₃))
-  :  ∃ V₄ e₄, SmallSteps defs (V₂, e₂) (V₄, e₄) ∧ SmallSteps defs (V₃, e₃) (V₄, e₄) := sorry
+  (HA : SmallSteps defs V e₁ e₂) (HB : SmallSteps defs V e₁ e₃)
+  :  ∃ e₄, SmallSteps defs V e₂ e₄ ∧ SmallSteps defs V e₃ e₄ := sorry
