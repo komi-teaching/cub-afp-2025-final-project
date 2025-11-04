@@ -5,10 +5,6 @@ inductive BinOp where
   | add
   | mul
 
-def BinOp.eval (n₁ n₂ : ℕ) : BinOp → ℕ
-  | add => n₁ + n₂
-  | mul => n₁ * n₂
-
 inductive Expr where
   | const (n : ℕ)
   | var (name : String)

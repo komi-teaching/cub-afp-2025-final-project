@@ -5,7 +5,7 @@ import LocalLang.Typing
 
 -- TODO: prove
 theorem preservation (Γ : TypeContext) (e e' : Expr) (ty : LLType) (defs : Definitions)
-  : TypeJdg Γ e ty → SmallStep defs (V₁, e) (V₂, e') → TypeJdg Γ e' ty := sorry
+  : TypeJdg Γ e ty → SmallStep defs V e e' → TypeJdg Γ e' ty := sorry
 
 -- Progress: if TypeJdg Γ e ty, then e can take a step.
 -- TODO: formalize
