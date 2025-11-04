@@ -74,20 +74,20 @@ def step₂ : SmallStep defs ∅ e₂ e₃ := by
   rw [Std.HashMap.getElem_eq_get_getElem?] at a
   simp [g_at_defs, g] at a
   let b : SmallStep defs (.ofList [("x", 0)]) f_body f_body₂ :=
-    .ctx_step (.bin_op_lhs .hole .add (.var "x")) a
+    .ctx_step (.binOpLhs .hole .add (.var "x")) a
   exact .letin_cong b
 def step₃ : SmallStep defs ∅ e₃ e₄ := by
   let a : SmallStep defs (.ofList [("x", 0)]) f_body₂ f_body₃ :=
-    .ctx_step (.bin_op_lhs
-      (.letin "x" (.bin_op_lhs .hole .add (.const 1)) (.var "x"))
+    .ctx_step (.binOpLhs
+      (.letIn "x" (.binOpLhs .hole .add (.const 1)) (.var "x"))
       .add
       (.var "x")
     ) (.var_step (by simp))
   exact .letin_cong a
 def step₄ : SmallStep defs ∅ e₄ e₅ := by
   let a : SmallStep defs (.ofList [("x", 0)]) f_body₃ f_body₄ :=
-    .ctx_step (.bin_op_lhs
-      (.letin "x" .hole (.var "x"))
+    .ctx_step (.binOpLhs
+      (.letIn "x" .hole (.var "x"))
       .add
       (.var "x")
     ) .bin_op_step
@@ -97,12 +97,12 @@ def step₅ : SmallStep defs ∅ e₅ e₆ := by
     (.letIn "x" (.const 1) (.var "x"))
     (.letIn "x" (.const 1) (.const 1)) :=
     .letin_cong (.var_step (by simp))
-  let b := SmallStep.ctx_step (.bin_op_lhs .hole .add (.var "x")) a
+  let b := SmallStep.ctx_step (.binOpLhs .hole .add (.var "x")) a
   exact .letin_cong b
 def step₆ : SmallStep defs ∅ e₆ e₇ :=
-  .letin_cong <| SmallStep.ctx_step (.bin_op_lhs .hole .add (.var "x")) .letin_const_step
+  .letin_cong <| SmallStep.ctx_step (.binOpLhs .hole .add (.var "x")) .letin_const_step
 def step₇ : SmallStep defs ∅ e₇ e₈ :=
-  .letin_cong <| .ctx_step (.bin_op_rhs 1 .add .hole) (.var_step (by simp))
+  .letin_cong <| .ctx_step (.binOpRhs 1 .add .hole) (.var_step (by simp))
 def step₈ : SmallStep defs ∅ e₈ e₉ :=
   .letin_cong <| .bin_op_step
 def step₉ : SmallStep defs ∅ e₉ e₁₀ :=
