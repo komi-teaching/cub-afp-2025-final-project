@@ -21,8 +21,8 @@ inductive SmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
   | letin_const_step {name : String} {val n : ℕ} :
       SmallStep defs V (.letIn name (.const val) (.const n)) (.const n)
   | fun_step {ps : List String} {body : Expr} {es : List Expr}
-      (Hf : ⟨f, ps, body⟩ ∈ defs) (Hpn : ps.length = es.length) :
-      SmallStep defs V (.funCall f es) (letin_chain (ps.zip es) body)
+      (Hf : f ∈ defs) (Hpn : ps.length = es.length) :
+      SmallStep defs V (.funCall f es) (letin_chain (defs[f].parameters.zip es) defs[f].body)
 
 inductive SmallSteps (defs : Definitions) : Env → Expr → Expr → Prop where
   | trivial : SmallSteps defs V e e
