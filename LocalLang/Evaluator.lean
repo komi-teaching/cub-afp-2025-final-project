@@ -6,4 +6,4 @@ def BinOp.eval (n₁ n₂ : ℕ) : BinOp → ℕ
 
 -- Maybe `m ℕ` for some monad `m`?
 -- TODO: implement
-def evaluate : Program → ℕ := sorry
+partial def evaluate : Program → ℕ := sorry
