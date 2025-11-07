@@ -57,7 +57,7 @@ def g_at_defs : defs["g"]? = some g := by
           (by simp [defs_list])
 
 def step₁ : SmallStep defs ∅ e₁ e₂ := by
-  let almost := @SmallStep.funStep defs "f" ∅ ["x"] f_body [.const 0]
+  let almost := @SmallStep.fun_step defs "f" ∅ ["x"] f_body [.const 0]
     (by apply Std.HashMap.mem_ofList.mpr; simp [defs_list])
     (by simp)
   simp [letin_chain] at almost
@@ -66,15 +66,15 @@ def step₁ : SmallStep defs ∅ e₁ e₂ := by
   assumption
 def step₂ : SmallStep defs ∅ e₂ e₃ := by
   let a  :=
-    @SmallStep.funStep defs "g" (.ofList [("x", 0)]) ["x"] g.body
+    @SmallStep.fun_step defs "g" (.ofList [("x", 0)]) ["x"] g.body
       [.binOp .add (.var "x") (.const 1)] (by apply Std.HashMap.mem_ofList.mpr; simp [defs_list])
       (by simp)
   simp [letin_chain] at a
   rw [Std.HashMap.getElem_eq_get_getElem?] at a
   simp [g_at_defs, g] at a
   let b : SmallStep defs (.ofList [("x", 0)]) f_body f_body₂ :=
-    .ctxStep (.binOpLhs .hole .add (.var "x")) (.ofList [("x", 0)]) a
-  let c := SmallStep.ctxStep (.letInBody "x" 0 .hole) ∅ b
+    .ctx_step (.binOpLhs .hole .add (.var "x")) (.ofList [("x", 0)]) a
+  let c := SmallStep.ctx_step (.letInBody "x" 0 .hole) ∅ b
   rw [f_body, f_body₂] at c
   simp [Ctx.fill] at c
   rw [← f_body, ← f_body₂] at c
@@ -82,12 +82,12 @@ def step₂ : SmallStep defs ∅ e₂ e₃ := by
   assumption
 def step₃ : SmallStep defs ∅ e₃ e₄ := by
   let a : SmallStep defs (.ofList [("x", 0)]) f_body₂ f_body₃ :=
-    .ctxStep (.binOpLhs
+    .ctx_step (.binOpLhs
       (.letInExpr "x" (.binOpLhs .hole .add (.const 1)) (.var "x"))
       .add
       (.var "x")
-    ) (.ofList [("x", 0)]) (.varStep (by simp [Ctx.updateEnv]))
-  let c := SmallStep.ctxStep (.letInBody "x" 0 .hole) ∅ a
+    ) (.ofList [("x", 0)]) (.var_step (by simp [Ctx.updateEnv]))
+  let c := SmallStep.ctx_step (.letInBody "x" 0 .hole) ∅ a
   rw [f_body₂, f_body₃] at c
   simp [Ctx.fill] at c
   rw [← f_body₂, ← f_body₃] at c
@@ -95,12 +95,12 @@ def step₃ : SmallStep defs ∅ e₃ e₄ := by
   assumption
 def step₄ : SmallStep defs ∅ e₄ e₅ := by
   let a : SmallStep defs (.ofList [("x", 0)]) f_body₃ f_body₄ :=
-    .ctxStep (.binOpLhs
+    .ctx_step (.binOpLhs
       (.letInExpr "x" .hole (.var "x"))
       .add
       (.var "x")
-    ) (.ofList [("x", 0)]) .binOpStep
-  let c := SmallStep.ctxStep (.letInBody "x" 0 .hole) ∅ a
+    ) (.ofList [("x", 0)]) .bin_op_step
+  let c := SmallStep.ctx_step (.letInBody "x" 0 .hole) ∅ a
   rw [f_body₃, f_body₄] at c
   simp [Ctx.fill] at c
   rw [← f_body₃, ← f_body₄] at c
@@ -110,21 +110,21 @@ def step₅ : SmallStep defs ∅ e₅ e₆ := by
   let a : SmallStep defs (.ofList [("x", 0)])
     (.letIn "x" (.const 1) (.var "x"))
     (.letIn "x" (.const 1) (.const 1)) :=
-    .ctxStep (.letInBody "x" 1 .hole) (.ofList [("x", 0)]) (.varStep (by simp [Ctx.updateEnv]))
-  let b := SmallStep.ctxStep (.binOpLhs .hole .add (.var "x")) (.ofList [("x", 0)]) a
-  let c := SmallStep.ctxStep (.letInBody "x" 0 .hole) ∅ b
+    .ctx_step (.letInBody "x" 1 .hole) (.ofList [("x", 0)]) (.var_step (by simp [Ctx.updateEnv]))
+  let b := SmallStep.ctx_step (.binOpLhs .hole .add (.var "x")) (.ofList [("x", 0)]) a
+  let c := SmallStep.ctx_step (.letInBody "x" 0 .hole) ∅ b
   simp [Ctx.fill] at c
   rw [← f_body₄, ← f_body₅] at c
   rw [← e₅, ← e₆] at c
   assumption
 def step₆ : SmallStep defs ∅ e₆ e₇ :=
-  .ctxStep (.letInBody "x" 0 (.binOpLhs .hole .add (.var "x"))) ∅ .letinConstStep
+  .ctx_step (.letInBody "x" 0 (.binOpLhs .hole .add (.var "x"))) ∅ .letin_const_step
 def step₇ : SmallStep defs ∅ e₇ e₈ :=
-  .ctxStep (.letInBody "x" 0 (.binOpRhs 1 .add .hole)) ∅ (.varStep (by simp [Ctx.updateEnv]))
+  .ctx_step (.letInBody "x" 0 (.binOpRhs 1 .add .hole)) ∅ (.var_step (by simp [Ctx.updateEnv]))
 def step₈ : SmallStep defs ∅ e₈ e₉ :=
-  .ctxStep (.letInBody "x" 0 .hole) ∅ .binOpStep
+  .ctx_step (.letInBody "x" 0 .hole) ∅ .bin_op_step
 def step₉ : SmallStep defs ∅ e₉ (.const 1) :=
-  .letinConstStep
+  .letin_const_step
 
 infixr:100 " ~> " => SmallSteps defs ∅
 
