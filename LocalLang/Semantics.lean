@@ -160,20 +160,15 @@ theorem smallStep_deterministic {defs : Definitions}
 
 -- TODO: prove
 theorem smallSteps_diamond {defs : Definitions} {e₁ e₂ e₃ : Expr}
-  : SmallSteps defs V e₁ e₂ → SmallSteps defs V e₁ e₃ →
-    ∃ e₄, SmallSteps defs V e₂ e₄ ∧ SmallSteps defs V e₃ e₄ := by
-  intro HA HB
-  induction HA : HA generalizing e₃ HB with
-  | refl => exists e₃
-  | tail asts ast ih => {
-      rename_i e₁' e₂' HA
-      cases HB with
-      | refl => {
-        exists e₂'
-      }
-      | tail bsts bst => {
-        rename_i e₁''
-        let ⟨e₄, ⟨asts', bsts'⟩⟩ := ih asts bsts (by rfl)
-        sorry
-      }
-  }
+  (HA : SmallSteps defs V e₁ e₂) (HB : SmallSteps defs V e₁ e₃)
+  : ∃ e₄, SmallSteps defs V e₂ e₄ ∧ SmallSteps defs V e₃ e₄ := by
+  let ⟨e₄, ⟨PA, PB⟩⟩ := Relation.church_rosser (by
+    intro a b c st_A st_B
+    use c
+    let b_eq_c := smallStep_deterministic st_A st_B
+    rw [b_eq_c]
+    constructor
+    · exact Relation.ReflGen.refl
+    · exact Relation.ReflTransGen.refl
+  ) HA HB
+  use e₄
