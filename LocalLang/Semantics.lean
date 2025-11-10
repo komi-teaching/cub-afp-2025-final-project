@@ -7,18 +7,20 @@ import Mathlib.Logic.Relation
 def letin_chain (vars : List (String × Expr)) (e : Expr) : Expr :=
   vars.foldl (fun e' (x, xe) => .letIn x xe e') e
 
-inductive SmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
+inductive HeadSmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
   | var_step : V[x]? = some n →
-      SmallStep defs V (.var x) (.const n)
+      HeadSmallStep defs V (.var x) (.const n)
   | bin_op_step {op : BinOp} :
-      SmallStep defs V (.binOp op (.const e₁) (.const e₂)) (.const (op.eval e₁ e₂))
-  | ctx_step (ctx : Ctx) (V : Env) : SmallStep defs (ctx.updateEnv V) e₁ e₂ →
-      SmallStep defs V (ctx.fill e₁) (ctx.fill e₂)
+      HeadSmallStep defs V (.binOp op (.const e₁) (.const e₂)) (.const (op.eval e₁ e₂))
   | letin_const_step {name : String} {val n : ℕ} :
-      SmallStep defs V (.letIn name (.const val) (.const n)) (.const n)
-  | fun_step {ps : List String} {body : Expr} {es : List Expr}
-      (Hf : f ∈ defs) (Hpn : ps.length = es.length) :
-      SmallStep defs V (.funCall f es) (letin_chain (defs[f].parameters.zip es) defs[f].body)
+      HeadSmallStep defs V (.letIn name (.const val) (.const n)) (.const n)
+  | fun_step (f : String) (es : List Expr)
+      (Hf : f ∈ defs) (Hpn : defs[f].parameters.length = es.length) :
+      HeadSmallStep defs V (.funCall f es) (letin_chain (defs[f].parameters.zip es) defs[f].body)
+
+inductive SmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
+  | ctx_step (ctx : Ctx) (V : Env) : HeadSmallStep defs (ctx.updateEnv V) e₁ e₂ →
+      SmallStep defs V (ctx.fill e₁) (ctx.fill e₂)
 
 abbrev SmallSteps (defs : Definitions) (env : Env) : Expr → Expr → Prop :=
   Relation.ReflTransGen (SmallStep defs env)
