@@ -9,14 +9,14 @@ inductive Ctx : Type where
 
 abbrev Env := Std.HashMap String ℕ
 
-def Ctx.fill (e : Expr) : Ctx → Expr
+@[reducible] def Ctx.fill (e : Expr) : Ctx → Expr
   | hole => e
   | binOpLhs ctx op e' => Expr.binOp op (ctx.fill e) e'
   | binOpRhs n op ctx => Expr.binOp op (.const n) (ctx.fill e)
   | letInExpr x ctx e' => .letIn x (ctx.fill e) e'
   | letInBody x n ctx => .letIn x (.const n) (ctx.fill e)
 
-def Ctx.updateEnv (env : Env) : Ctx → Env
+@[reducible] def Ctx.updateEnv (env : Env) : Ctx → Env
   | hole => env
   | binOpLhs ctx _ _ => ctx.updateEnv env
   | binOpRhs _ _ ctx => ctx.updateEnv env
