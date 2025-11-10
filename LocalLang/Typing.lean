@@ -2,7 +2,6 @@ import LocalLang.AST
 import LocalLang.Types
 
 -- in context Γ expression ε has Type T
--- TODO: define
 
 mutual
   inductive TypeJdg : TypeContext → Expr → LLType → Prop where
@@ -20,3 +19,21 @@ mutual
           (h_e : TypeJdg Γ e T) (h_es : TypeJdgList Γ es Ts)
           : TypeJdgList Γ (e :: es) (T :: Ts)
 end
+
+
+-- Examples for TypeJdg
+example : TypeJdg [] (.const 5) .nat := by
+  apply TypeJdg.JdgConst
+
+example : TypeJdg [("x", .nat)] (.var "x") .nat := by
+  apply TypeJdg.JdgVar (List.mem_singleton_self ("x", LLType.nat))
+
+def ctx : TypeContext := [("add", .func [.nat] .nat), ("x", .nat)]
+
+example : TypeJdg ctx (.funCall "add" [.var "x"]) (LLType.func [.nat] .nat) := by
+  apply TypeJdg.JdgFun (by simp [ctx]) (by
+    apply TypeJdgList.Cons
+    · apply TypeJdg.JdgVar
+      simp [ctx]
+    · apply TypeJdgList.Nil
+  )
