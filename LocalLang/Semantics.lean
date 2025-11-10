@@ -128,6 +128,15 @@ lemma smallStep_with_funStep_deterministic {defs : Definitions} {es : List Expr}
         let defs_f_eq : defs[f] = defs[f'] := getElem_congr rfl f_eq Hf
         rw [← defs_f_eq]
 
+lemma ctxStep_with_hole_deterministic {defs : Definitions} {ctx' : Ctx}
+  (ih : SmallStep defs V e₁ (ctx'.fill e₂') → e₂ = Ctx.fill e₂' ctx')
+  (e₀_eq : e₁ = ctx'.fill e₁')
+  (st' : SmallStep defs (Ctx.updateEnv V ctx') e₁' e₂') : ctx'.fill e₂' = e₂ := by
+    apply Eq.symm
+    apply ih
+    rw [e₀_eq]
+    exact .ctxStep ctx' V st'
+
 theorem smallStep_deterministic {defs : Definitions}
   (HA : SmallStep defs V e₁ e₂) (HB : SmallStep defs V e₁ e₃) : e₂ = e₃ := by
   induction HA with
@@ -143,9 +152,7 @@ theorem smallStep_deterministic {defs : Definitions}
     · rename_i Hin
       exact smallStep_with_varStep_deterministic Hin HA
     · exact smallStep_with_binOpStep_deterministic HA
-    · {
-      sorry
-      }
+    · sorry
     · exact smallStep_with_letInConstStep_deterministic HA
     · expose_names
       exact smallStep_with_funStep_deterministic Hf HA
