@@ -9,6 +9,7 @@ inductive Expr where
   | const (n : ℕ)
   | var (name : String)
   | binOp (op : BinOp) (e₁ e₂ : Expr)
+  | letIn (name : String) (e₁ e₂ : Expr)
   | funCall (f : String) (es : List Expr)
 
 structure Function where
