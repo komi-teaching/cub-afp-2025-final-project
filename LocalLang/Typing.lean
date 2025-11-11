@@ -12,6 +12,14 @@ mutual
                   (H_f : (f, .func arg_types T_return) ∈ Γ)
                   (H_args : TypeJdgList Γ es arg_types)
                         : TypeJdg Γ (.funCall f es) (LLType.func arg_types T_return)
+    | jdgBinOp {Γ : TypeContext} {op : BinOp} {e₁ e₂ : Expr}
+                (H₁ : TypeJdg Γ e₁ LLType.nat) (H₂ : TypeJdg Γ e₂ LLType.nat)
+                        : TypeJdg Γ (.binOp op e₁ e₂) .nat
+    | jdgLetIn {Γ : TypeContext} {name : String} {e₁ e₂ : Expr}
+                (H₁ : TypeJdg Γ e₁ LLType.nat)
+                (H₂ : TypeJdg ((name, LLType.nat) :: Γ) e₂ LLType.nat)
+                        : TypeJdg  Γ (.letIn name e₁ e₂) .nat
+
 
   inductive TypeJdgList : TypeContext -> List Expr -> List LLType -> Prop
     | nil : TypeJdgList Γ [] []
