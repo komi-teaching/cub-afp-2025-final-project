@@ -2,24 +2,32 @@ import LocalLang.AST
 import LocalLang.Evaluator
 import LocalLang.Ctx
 import Mathlib.Logic.Relation
-import Mathlib.Tactic.Tauto
 
 -- for rewriting (.funCall f es) in terms of let
-def letin_chain (vars : List (String × Expr)) (e : Expr) : Expr :=
+def Expr.addBindings (vars : List (String × Expr)) (e : Expr) : Expr :=
   vars.foldl (fun e' (x, xe) => .letIn x xe e') e
 
+inductive HeadSmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
+  | var_step : V[x]? = some n →
+      HeadSmallStep defs V (.var x) (.const n)
+  | bin_op_step {op : BinOp}
+      : n = op.eval e₁ e₂
+      → HeadSmallStep defs V (.binOp op (.const e₁) (.const e₂)) (.const n)
+  | let_in_const_step {name : String} {n₁ n₂ : ℕ}
+      : HeadSmallStep defs V (.letIn name (.const n₁) (.const n₂)) (.const n₂)
+  | fun_step {f : String} {es : List Expr} {ps : List String} {bd : Expr}
+      : (h_f : f ∈ defs)
+      → (ps = defs[f].parameters)
+      → (bd = defs[f].body)
+      → (r = bd.addBindings (ps.zip es))
+      → (ps.length = es.length)
+      → HeadSmallStep defs V (.funCall f es) r
+
 inductive SmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
-  | varStep : V[x]? = some n →
-      SmallStep defs V (.var x) (.const n)
-  | binOpStep {op : BinOp} :
-      SmallStep defs V (.binOp op (.const e₁) (.const e₂)) (.const (op.eval e₁ e₂))
-  | ctxStep (ctx : Ctx) (V : Env) : SmallStep defs (ctx.updateEnv V) e₁ e₂ →
-      SmallStep defs V (ctx.fill e₁) (ctx.fill e₂)
-  | letInConstStep {name : String} {val n : ℕ} :
-      SmallStep defs V (.letIn name (.const val) (.const n)) (.const n)
-  | funStep {ps : List String} {body : Expr} {es : List Expr}
-      (Hf : f ∈ defs) (Hpn : ps.length = es.length) :
-      SmallStep defs V (.funCall f es) (letin_chain (defs[f].parameters.zip es) defs[f].body)
+  | ctx_step (ctx : Ctx) {V : Env}
+      : (e₁' = ctx.fill e₁) → (e₂' = ctx.fill e₂)
+      → HeadSmallStep defs (ctx.updateEnv V) e₁ e₂
+      → SmallStep defs V e₁' e₂'
 
 abbrev SmallSteps (defs : Definitions) (env : Env) : Expr → Expr → Prop :=
   Relation.ReflTransGen (SmallStep defs env)
@@ -31,88 +39,124 @@ def SmallSteps.single {defs : Definitions} {env : Env} :
 
 @[simp] lemma var_eq_fill_implies_hole {ctx : Ctx}
   (H : Expr.var x = ctx.fill e)
-  : (ctx = .hole) := by
+  : (ctx = .hole ∧ Expr.var x = e) := by
     cases ctx
     any_goals simp [Ctx.fill] at H
-    rfl
+    constructor
+    · rfl
+    · assumption
 
 @[simp] lemma const_eq_fill_implies_hole {ctx : Ctx}
   (H : Expr.const n = ctx.fill e)
-  : (ctx = .hole) := by
+  : (ctx = .hole ∧ Expr.const n = e) := by
     cases ctx
     any_goals simp [Ctx.fill] at H
-    rfl
+    constructor
+    · rfl
+    · assumption
+
+@[simp] lemma no_headSmallStep_from_const {defs : Definitions}
+  (st : HeadSmallStep defs V (.const x) e) : False := by
+    cases st
 
 @[simp] lemma no_smallStep_from_const {defs : Definitions}
   (st : SmallStep defs V (.const x) e) : False := by
     generalize e₀_eq : Expr.const x = e₀ at *
-    induction st <;> try contradiction
-    · rename_i ih
-      let ctx_eq := const_eq_fill_implies_hole e₀_eq
-      simp [ctx_eq, Ctx.fill] at e₀_eq
-      apply ih
-      assumption
+    cases st with
+    | ctx_step ctx e₁'_eq e₂'_eq headSt => {
+      rw [e₁'_eq] at e₀_eq
+      let ⟨ctx_eq, e₁_eq⟩ := const_eq_fill_implies_hole e₀_eq
+      rw [← e₁_eq] at headSt
+      apply no_headSmallStep_from_const headSt
+    }
 
 lemma smallStep_with_varStep_deterministic {defs : Definitions}
   (Hin : V[x]? = some n) (st : SmallStep defs V (.var x) e) : (.const n = e) := by
     generalize e₀_eq : Expr.var x = e₀ at *
-    induction st <;> try contradiction
-    · rename_i x' n' Hin'
-      injection e₀_eq with x_eq
-      rw [← x_eq, Hin] at Hin'
-      injection Hin' with n_eq
-      rw [n_eq]
-    · rename_i e₁ e₂ ctx V st' ih
-      let ctx_eq_hole := var_eq_fill_implies_hole e₀_eq
-      simp [ctx_eq_hole, Ctx.fill, Ctx.updateEnv] at *
-      simp [ctx_eq_hole, Ctx.fill] at e₀_eq
-      exact ih Hin e₀_eq
+    cases st with
+    | ctx_step ctx e₁'_eq e₂'_eq headSt => {
+      rename_i e₁ e₂
+      rw [e₁'_eq] at e₀_eq
+      rw [e₂'_eq]
+      let ⟨ctx_eq, e₁_eq⟩ := var_eq_fill_implies_hole e₀_eq
+      simp [ctx_eq, Ctx.fill, Ctx.updateEnv] at *
+      rw [← e₁_eq] at headSt
+      cases headSt with
+      | var_step Hin' => {
+        rename_i n'
+        rw [Hin'] at Hin
+        injection Hin with n'_eq_n
+        simp [n'_eq_n]
+      }
+    }
+
+lemma headSmallStep_with_binOpStep_deterministic {defs : Definitions} {op : BinOp}
+  (st : HeadSmallStep defs V (.binOp op (.const n₁) (.const n₂)) e)
+  : (.const (op.eval n₁ n₂) = e) := by
+    cases st with
+    | bin_op_step n_eq => simp only [n_eq]
 
 -- TODO: extract repeating parts
 lemma smallStep_with_binOpStep_deterministic {defs : Definitions} {op : BinOp}
   (st : SmallStep defs V (.binOp op (.const n₁) (.const n₂)) e) : (.const (op.eval n₁ n₂) = e) := by
     generalize e₀_eq : Expr.binOp op (.const n₁) (.const n₂) = e₀ at st
-    induction st <;> try contradiction
-    · injection e₀_eq with op_eq e₁_eq e₂_eq
-      injection e₁_eq with n₁_eq
-      injection e₂_eq with n₂_eq
-      simp [op_eq, n₁_eq, n₂_eq]
-    · rename_i e₁ e₂ ctx V' st' ih
-      cases ctx <;> try (simp [Ctx.fill] at *)
-      · exact ih e₀_eq
-      · let n_eq := e₀_eq.right.left
-        let ctx_eq := const_eq_fill_implies_hole n_eq
-        simp [Ctx.fill, ctx_eq] at st' n_eq
-        rw [← n_eq] at st'
-        apply no_smallStep_from_const
-        assumption
-      · let n_eq := e₀_eq.right.right
-        let ctx_eq := const_eq_fill_implies_hole n_eq
-        simp [Ctx.fill, ctx_eq] at st' n_eq
-        rw [← n_eq] at st'
-        apply no_smallStep_from_const
-        assumption
+    cases st with
+    | ctx_step ctx e₁'_eq e₂'_eq headSt => {
+      rename_i e₁ e₂
+      simp [e₁'_eq] at e₀_eq
+      cases ctx <;> try simp [Ctx.fill] at *
+      case hole => (
+        rw [← e₀_eq, ← e₂'_eq] at headSt
+        exact headSmallStep_with_binOpStep_deterministic headSt
+      )
+      case binOpLhs ctx₀ op' e' => (
+        let ⟨op_eq, ⟨e₁_fill_eq, e_eq⟩⟩ := e₀_eq
+        let ⟨ctx_eq, e₁_eq⟩ := const_eq_fill_implies_hole e₁_fill_eq
+        rw [← e₁_eq] at headSt
+        let : False := no_headSmallStep_from_const headSt
+        contradiction
+      )
+      case binOpRhs n op' ctx₀ => (
+        let ⟨op_eq, ⟨n_eq, e₁_fill_eq⟩⟩ := e₀_eq
+        let ⟨ctx_eq, e₁_eq⟩ := const_eq_fill_implies_hole e₁_fill_eq
+        rw [← e₁_eq] at headSt
+        let : False := no_headSmallStep_from_const headSt
+        contradiction
+      )
+    }
+
+lemma headSmallStep_with_letInConstStep_deterministic {defs : Definitions}
+  (st : HeadSmallStep defs V (.letIn x (.const n₁) (.const n₂)) e) : (.const n₂ = e) := by
+    cases st
+    · rfl
 
 lemma smallStep_with_letInConstStep_deterministic {defs : Definitions}
   (st : SmallStep defs V (.letIn x (.const n₁) (.const n₂)) e) : (.const n₂ = e) := by
     generalize e₀_eq : Expr.letIn x (.const n₁) (.const n₂) = e₀ at st
-    induction st <;> try contradiction
-    · rename_i e₁ e₂ ctx V' st' ih
+    cases st with
+    | ctx_step ctx e₁'_eq e₂'_eq headSt => {
+      rename_i e₁ e₂
+      rw [e₁'_eq] at e₀_eq
       cases ctx <;> try (simp [Ctx.fill] at *)
-      · exact ih e₀_eq
-      · let n_eq := e₀_eq.right.left
-        let ctx_eq := const_eq_fill_implies_hole n_eq
-        simp [Ctx.fill, ctx_eq] at st' n_eq
-        rw [← n_eq] at st'
-        apply no_smallStep_from_const
-        assumption
-      · let n_eq := e₀_eq.right.right
-        let ctx_eq := const_eq_fill_implies_hole n_eq
-        simp [Ctx.fill, ctx_eq] at st' n_eq
-        rw [← n_eq] at st'
-        apply no_smallStep_from_const
-        assumption
-    · injection e₀_eq
+      case hole => (
+        rw [← e₀_eq, ← e₂'_eq] at headSt
+        exact headSmallStep_with_letInConstStep_deterministic headSt
+      )
+      case letInExpr x' ctx₀ e' => (
+        let ⟨op_eq, ⟨e₁_fill_eq, e_eq⟩⟩ := e₀_eq
+        let ⟨ctx_eq, e₁_eq⟩ := const_eq_fill_implies_hole e₁_fill_eq
+        rw [← e₁_eq] at headSt
+        let : False := no_headSmallStep_from_const headSt
+        contradiction
+      )
+      case letInBody x' n ctx₀ => (
+        let ⟨op_eq, ⟨n_eq, e₁_fill_eq⟩⟩ := e₀_eq
+        let ⟨ctx_eq, e₁_eq⟩ := const_eq_fill_implies_hole e₁_fill_eq
+        rw [← e₁_eq] at headSt
+        let : False := no_headSmallStep_from_const headSt
+        contradiction
+      )
+    }
 
 lemma smallStep_with_funStep_deterministic {defs : Definitions} {es : List Expr}
   (Hf : f ∈ defs) (st : SmallStep defs V (.funCall f es) e)
@@ -128,14 +172,9 @@ lemma smallStep_with_funStep_deterministic {defs : Definitions} {es : List Expr}
         let defs_f_eq : defs[f] = defs[f'] := getElem_congr rfl f_eq Hf
         rw [← defs_f_eq]
 
-lemma ctxStep_with_hole_deterministic {defs : Definitions} {ctx' : Ctx}
-  (ih : SmallStep defs V e₁ (ctx'.fill e₂') → e₂ = Ctx.fill e₂' ctx')
-  (e₀_eq : e₁ = ctx'.fill e₁')
-  (st' : SmallStep defs (Ctx.updateEnv V ctx') e₁' e₂') : ctx'.fill e₂' = e₂ := by
-    apply Eq.symm
-    apply ih
-    rw [e₀_eq]
-    exact .ctxStep ctx' V st'
+lemma head_small_step_and_small_step_deterministic {defs : Definitions}
+  (HA : SmallStep defs V e₁ e₂) (HB : HeadSmallStep defs V e₁ e₃) : e₂ = e₃ := by
+    sorry
 
 theorem smallStep_deterministic {defs : Definitions}
   (HA : SmallStep defs V e₁ e₂) (HB : SmallStep defs V e₁ e₃) : e₂ = e₃ := by
@@ -161,14 +200,4 @@ theorem smallStep_deterministic {defs : Definitions}
 -- TODO: prove
 theorem smallSteps_diamond {defs : Definitions} {e₁ e₂ e₃ : Expr}
   (HA : SmallSteps defs V e₁ e₂) (HB : SmallSteps defs V e₁ e₃)
-  : ∃ e₄, SmallSteps defs V e₂ e₄ ∧ SmallSteps defs V e₃ e₄ := by
-  let ⟨e₄, ⟨PA, PB⟩⟩ := Relation.church_rosser (by
-    intro a b c st_A st_B
-    use c
-    let b_eq_c := smallStep_deterministic st_A st_B
-    rw [b_eq_c]
-    constructor
-    · exact Relation.ReflGen.refl
-    · exact Relation.ReflTransGen.refl
-  ) HA HB
-  use e₄
+  :  ∃ e₄, SmallSteps defs V e₂ e₄ ∧ SmallSteps defs V e₃ e₄ := sorry

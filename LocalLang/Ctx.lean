@@ -16,7 +16,7 @@ abbrev Env := Std.HashMap String ℕ
   | letInExpr x ctx e' => .letIn x (ctx.fill e) e'
   | letInBody x n ctx => .letIn x (.const n) (ctx.fill e)
 
-def Ctx.updateEnv (env : Env) : Ctx → Env
+@[reducible] def Ctx.updateEnv (env : Env) : Ctx → Env
   | hole => env
   | binOpLhs ctx _ _ => ctx.updateEnv env
   | binOpRhs _ _ ctx => ctx.updateEnv env

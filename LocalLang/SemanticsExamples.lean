@@ -1,141 +1,89 @@
 import LocalLang.Semantics
+import LocalLang.SemanticsLemmas
+import LocalLang.Ctx
 import Mathlib.Data.List.Sigma
+import Std.Data.HashMap.Basic
+import Std.Data.HashMap.Lemmas
 
-def f_body : Expr := .binOp .add
-  (
-    .funCall "g" [
-      .binOp .add (.var "x") (.const 1)
-    ]
-  )
-  (
-    .var "x"
-  )
-def f : Function := ⟨
-  ["x"],
-  f_body
-⟩
-def g : Function := ⟨
-  ["x"],
-  .var "x"
-⟩
+instance : Add Expr where
+  add := .binOp .add
 
-def f_body₂ : Expr := .binOp .add
-  (.letIn "x" (.binOp .add (.var "x") (.const 1)) (.var "x"))
-  (.var "x")
-def f_body₃ : Expr := .binOp .add
-  (.letIn "x" (.binOp .add (.const 0) (.const 1)) (.var "x"))
-  (.var "x")
-def f_body₄ : Expr := .binOp .add
-  (.letIn "x" (.const 1) (.var "x"))
-  (.var "x")
-def f_body₅ : Expr := .binOp .add
-  (.letIn "x" (.const 1) (.const 1))
-  (.var "x")
-def f_body₆ : Expr := .binOp .add (.const 1) (.var "x")
-def f_body₇ : Expr := .binOp .add (.const 1) (.const 0)
-def f_body₈ : Expr := .const 1
-def e₁ : Expr := .funCall "f" [.const 0]
-def e₂ : Expr := .letIn "x" (.const 0) f_body
-def e₃ : Expr := .letIn "x" (.const 0) f_body₂
-def e₄ : Expr := .letIn "x" (.const 0) f_body₃
-def e₅ : Expr := .letIn "x" (.const 0) f_body₄
-def e₆ : Expr := .letIn "x" (.const 0) f_body₅
-def e₇ : Expr := .letIn "x" (.const 0) f_body₆
-def e₈ : Expr := .letIn "x" (.const 0) f_body₇
-def e₉ : Expr := .letIn "x" (.const 0) f_body₈
+instance : Coe String Expr where
+  coe := .var
 
-def defs_list := [("f", f), ("g", g)]
-def defs := Std.HashMap.ofList defs_list
+instance : OfNat Expr n where
+  ofNat := .const n
 
-def f_at_defs : defs["f"]? = some f := by
-  simp [defs]
-  exact Std.HashMap.getElem?_ofList_of_mem (by rfl : "f" == "f") (by simp [defs_list])
-          (by simp [defs_list])
-def g_at_defs : defs["g"]? = some g := by
-  simp [defs]
-  exact Std.HashMap.getElem?_ofList_of_mem (by rfl : "g" == "g") (by simp [defs_list])
-          (by simp [defs_list])
+abbrev f_body : Expr := (.funCall "g" [ "x" + 1 ]) + "x"
+abbrev f : Function := {
+  parameters := ["x"],
+  body := f_body
+}
+abbrev g : Function := {
+  parameters := ["x"],
+  body := "x"
+}
 
-def step₁ : SmallStep defs ∅ e₁ e₂ := by
-  let almost := @SmallStep.funStep defs "f" ∅ ["x"] f_body [.const 0]
-    (by apply Std.HashMap.mem_ofList.mpr; simp [defs_list])
-    (by simp)
-  simp [letin_chain] at almost
-  rw [Std.HashMap.getElem_eq_get_getElem?] at almost
-  simp [f_at_defs, f] at almost
-  assumption
-def step₂ : SmallStep defs ∅ e₂ e₃ := by
-  let a  :=
-    @SmallStep.funStep defs "g" (.ofList [("x", 0)]) ["x"] g.body
-      [.binOp .add (.var "x") (.const 1)] (by apply Std.HashMap.mem_ofList.mpr; simp [defs_list])
-      (by simp)
-  simp [letin_chain] at a
-  rw [Std.HashMap.getElem_eq_get_getElem?] at a
-  simp [g_at_defs, g] at a
-  let b : SmallStep defs (.ofList [("x", 0)]) f_body f_body₂ :=
-    .ctxStep (.binOpLhs .hole .add (.var "x")) (.ofList [("x", 0)]) a
-  let c := SmallStep.ctxStep (.letInBody "x" 0 .hole) ∅ b
-  rw [f_body, f_body₂] at c
-  simp [Ctx.fill] at c
-  rw [← f_body, ← f_body₂] at c
-  rw [← e₂, ← e₃] at c
-  assumption
-def step₃ : SmallStep defs ∅ e₃ e₄ := by
-  let a : SmallStep defs (.ofList [("x", 0)]) f_body₂ f_body₃ :=
-    .ctxStep (.binOpLhs
-      (.letInExpr "x" (.binOpLhs .hole .add (.const 1)) (.var "x"))
-      .add
-      (.var "x")
-    ) (.ofList [("x", 0)]) (.varStep (by simp [Ctx.updateEnv]))
-  let c := SmallStep.ctxStep (.letInBody "x" 0 .hole) ∅ a
-  rw [f_body₂, f_body₃] at c
-  simp [Ctx.fill] at c
-  rw [← f_body₂, ← f_body₃] at c
-  rw [← e₃, ← e₄] at c
-  assumption
-def step₄ : SmallStep defs ∅ e₄ e₅ := by
-  let a : SmallStep defs (.ofList [("x", 0)]) f_body₃ f_body₄ :=
-    .ctxStep (.binOpLhs
-      (.letInExpr "x" .hole (.var "x"))
-      .add
-      (.var "x")
-    ) (.ofList [("x", 0)]) .binOpStep
-  let c := SmallStep.ctxStep (.letInBody "x" 0 .hole) ∅ a
-  rw [f_body₃, f_body₄] at c
-  simp [Ctx.fill] at c
-  rw [← f_body₃, ← f_body₄] at c
-  rw [← e₄, ← e₅] at c
-  assumption
-def step₅ : SmallStep defs ∅ e₅ e₆ := by
-  let a : SmallStep defs (.ofList [("x", 0)])
-    (.letIn "x" (.const 1) (.var "x"))
-    (.letIn "x" (.const 1) (.const 1)) :=
-    .ctxStep (.letInBody "x" 1 .hole) (.ofList [("x", 0)]) (.varStep (by simp [Ctx.updateEnv]))
-  let b := SmallStep.ctxStep (.binOpLhs .hole .add (.var "x")) (.ofList [("x", 0)]) a
-  let c := SmallStep.ctxStep (.letInBody "x" 0 .hole) ∅ b
-  simp [Ctx.fill] at c
-  rw [← f_body₄, ← f_body₅] at c
-  rw [← e₅, ← e₆] at c
-  assumption
-def step₆ : SmallStep defs ∅ e₆ e₇ :=
-  .ctxStep (.letInBody "x" 0 (.binOpLhs .hole .add (.var "x"))) ∅ .letinConstStep
-def step₇ : SmallStep defs ∅ e₇ e₈ :=
-  .ctxStep (.letInBody "x" 0 (.binOpRhs 1 .add .hole)) ∅ (.varStep (by simp [Ctx.updateEnv]))
-def step₈ : SmallStep defs ∅ e₈ e₉ :=
-  .ctxStep (.letInBody "x" 0 .hole) ∅ .binOpStep
-def step₉ : SmallStep defs ∅ e₉ (.const 1) :=
-  .letinConstStep
+abbrev defs := Std.HashMap.ofList [("f", f), ("g", g)]
 
-infixr:100 " ~> " => SmallSteps defs ∅
+@[simp] lemma defs_f : defs["f"] = f := by
+  apply (Std.HashMap.getElem_ofList_of_mem (k := "f")) <;> simp
+@[simp] lemma defs_g : defs["g"] = g := by
+  apply (Std.HashMap.getElem_ofList_of_mem (k := "g")) <;> simp
 
-def steps : e₁ ~> (.const 1) := by
+lemma f_steps
+  : SmallSteps defs (Std.HashMap.ofList [("x", 0)])
+      (Expr.funCall "g" ["x" + 1] + Expr.var "x") 1 := by
+  let locals := Std.HashMap.ofList [("x", 0)]
   calc
-    e₁ ~> e₂ := SmallSteps.single step₁
-    e₂ ~> e₃ := SmallSteps.single step₂
-    e₃ ~> e₄ := SmallSteps.single step₃
-    e₄ ~> e₅ := SmallSteps.single step₄
-    e₅ ~> e₆ := SmallSteps.single step₅
-    e₆ ~> e₇ := SmallSteps.single step₆
-    e₇ ~> e₈ := SmallSteps.single step₇
-    e₈ ~> e₉ := SmallSteps.single step₈
-    e₉ ~> (.const 1) := SmallSteps.single step₉
+    SmallSteps defs locals _ (1 + "x") := by
+      apply (SmallSteps.with_ctx (.binOpLhs .hole .add "x") rfl rfl)
+      simp only [Ctx.updateEnv]
+      calc
+        SmallStep defs locals _ (.letIn "x" ("x" + 1) "x") := by
+          apply SmallStep.hole_step
+          apply (HeadSmallStep.fun_step ?_ rfl) <;> try rw [defs_g]
+          · simp
+          · rfl
+          · simp
+        SmallSteps defs locals _ (.letIn "x" 1 "x") := by
+          apply (SmallSteps.with_ctx (.letInExpr "x" .hole "x") rfl rfl)
+          calc
+            SmallStep defs locals _ ((0 : Expr) + 1) := by
+              apply (SmallStep.ctx_step (.binOpLhs .hole .add 1) rfl rfl)
+              constructor
+              simp [locals]
+            SmallStep defs locals _ _ := by
+              apply SmallStep.hole_step
+              constructor
+              rfl
+        SmallStep defs locals _ (.letIn "x" 1 1) := by
+          apply (SmallStep.ctx_step (.letInBody "x" 1 .hole) rfl rfl)
+          constructor
+          simp
+        SmallStep defs locals _ 1 := by
+          apply SmallStep.hole_step
+          constructor
+    SmallStep defs locals _ ((1 : Expr) + 0) := by
+      apply (SmallStep.ctx_step (.binOpRhs 1 .add .hole) rfl rfl)
+      constructor
+      simp [locals]
+    SmallStep defs locals _ _ := by
+      apply SmallStep.hole_step
+      constructor
+      rfl
+
+example : SmallSteps defs ∅ (.funCall "f" [0]) 1 := by
+  calc
+    SmallStep defs ∅ _ (.letIn "x" 0 f_body) := by
+      apply SmallStep.hole_step
+      apply (HeadSmallStep.fun_step ?_ rfl) <;> try rw [defs_f]
+      · simp
+      · rfl
+      · simp
+    SmallSteps defs ∅ _ (.letIn "x" 0 1) := by
+      apply (SmallSteps.with_ctx (.letInBody "x" 0 .hole) rfl rfl)
+      exact f_steps
+    SmallStep defs ∅ _ _ := by
+      apply SmallStep.hole_step
+      constructor
