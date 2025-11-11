@@ -183,22 +183,6 @@ lemma smallStep_from_funCall_deterministic {defs : Definitions} {es : List Expr}
         )
       }
 
-lemma headSmallStep_deterministic {defs : Definitions}
-  (HA : HeadSmallStep defs V e₁ e₂) (HB : HeadSmallStep defs V e₁ e₃) : e₂ = e₃ := by
-    cases HA with
-    | var_step Hin' => exact headSmallStep_from_var_deterministic Hin' HB
-    | bin_op_step n_eq => {
-      let result := headSmallStep_from_const_binOp_deterministic HB
-      rw [← n_eq] at result
-      assumption
-    }
-    | let_in_const_step => exact headSmallStep_from_const_letIn_deterministic HB
-    | fun_step h_f Hps Hbd Hr Hlen => {
-      let result := headSmallStep_from_funCall_deterministic h_f HB
-      rw [← Hps, ← Hbd, ← Hr] at result
-      assumption
-    }
-
 lemma headSmallStep_and_smallStep_deterministic {defs : Definitions}
   (HA : HeadSmallStep defs V e₁ e₂) (HB : SmallStep defs V e₁ e₃) : e₂ = e₃ := by
     cases HA with
@@ -215,28 +199,132 @@ lemma headSmallStep_and_smallStep_deterministic {defs : Definitions}
       assumption
     }
 
+lemma headSmallStep_deterministic {defs : Definitions}
+  (HA : HeadSmallStep defs V e₁ e₂) (HB : HeadSmallStep defs V e₁ e₃) : e₂ = e₃ :=
+    headSmallStep_and_smallStep_deterministic HA
+      (.ctx_step .hole (by rw [Ctx.fill]) (by rw [Ctx.fill]) HB)
+
 -- TODO: prove
 theorem smallStep_deterministic {defs : Definitions}
   (HA : SmallStep defs V e₁ e₂) (HB : SmallStep defs V e₁ e₃) : e₂ = e₃ := by
-  cases HA with
-  | ctx_step ctx e₁_eq e₂_eq headSt => (
-    rename_i e₁' e₂'
-    induction ctx <;> simp [Ctx.fill] at *
+  let ⟨ctx, e₁_eq, e₂_eq, headSt⟩ := HA
+  rename_i e₁' e₂'
+  induction ctx generalizing e₁ e₂ e₃ HB V <;> simp [Ctx.fill] at *
+  case hole => (
+    rw [← e₁_eq, ← e₂_eq] at headSt
+    exact headSmallStep_and_smallStep_deterministic headSt HB
+  )
+  case binOpLhs ctx₀ op' e' ih => (
+    let ⟨ctx', e₁_eq', e₃_eq, headSt'⟩ := HB
+    rename_i e₁'' e₃'
+    rw [e₁_eq] at e₁_eq'
+    cases ctx' <;> simp [Ctx.fill] at e₁_eq' e₃_eq
     case hole => (
-      rw [← e₁_eq, ← e₂_eq] at headSt
-      exact headSmallStep_and_smallStep_deterministic headSt HB
+      rw [← e₁_eq', ← e₃_eq, Ctx.updateEnv] at headSt'
+      rw [e₁_eq] at HA
+      exact Eq.symm (headSmallStep_and_smallStep_deterministic headSt' HA)
     )
-    case binOpLhs ctx₀ op' e' ih => (
-      sorry
+    case binOpLhs ctx₀' op'' e'' => (
+      let ⟨op'_eq, ⟨fill_eq, e'_eq⟩⟩ := e₁_eq'
+      let HA' : SmallStep defs V (ctx₀.fill e₁') (ctx₀.fill e₂')
+        := SmallStep.ctx_step ctx₀ (by rfl) (by rfl) headSt
+      let HB' : SmallStep defs V (ctx₀'.fill e₁'') (ctx₀'.fill e₃')
+        := SmallStep.ctx_step ctx₀' (by rfl) (by rfl) headSt'
+      rw [← fill_eq] at HB'
+      let result := ih HA' HB' (by rfl) (by rfl) headSt
+      rw [e₂_eq, e₃_eq, ← op'_eq, ← e'_eq, result]
     )
-    case binOpRhs n op' ctx₀ ih => (
-      sorry
+    case binOpRhs n op'' ctx₀' => (
+      let ⟨op'_eq, ⟨fill_eq, e'_eq⟩⟩ := e₁_eq'
+      let ⟨_, e₁'_eq⟩ := const_eq_fill_implies_hole (Eq.symm fill_eq)
+      rw [← e₁'_eq] at headSt
+      let : False := no_headSmallStep_from_const headSt
+      contradiction
     )
-    case letInExpr x' ctx₀ e' ih => (
-      sorry
+  )
+  case binOpRhs n op' ctx₀ ih => (
+    let ⟨ctx', e₁_eq', e₃_eq, headSt'⟩ := HB
+    rename_i e₁'' e₃'
+    rw [e₁_eq] at e₁_eq'
+    cases ctx' <;> simp [Ctx.fill] at e₁_eq' e₃_eq
+    case hole => (
+      rw [← e₁_eq', ← e₃_eq, Ctx.updateEnv] at headSt'
+      rw [e₁_eq] at HA
+      exact Eq.symm (headSmallStep_and_smallStep_deterministic headSt' HA)
     )
-    case letInBody x' n ctx₀ ih => (
-      sorry
+    case binOpLhs ctx₀' op'' e'' => (
+      let ⟨op'_eq, ⟨fill_eq, e'_eq⟩⟩ := e₁_eq'
+      let ⟨_, e₁'_eq⟩ := const_eq_fill_implies_hole fill_eq
+      rw [← e₁'_eq] at headSt'
+      let : False := no_headSmallStep_from_const headSt'
+      contradiction
+    )
+    case binOpRhs n op'' ctx₀' => (
+      let ⟨op'_eq, ⟨n_eq, fill_eq⟩⟩ := e₁_eq'
+      let HA' : SmallStep defs V (ctx₀.fill e₁') (ctx₀.fill e₂')
+        := SmallStep.ctx_step ctx₀ (by rfl) (by rfl) headSt
+      let HB' : SmallStep defs V (ctx₀'.fill e₁'') (ctx₀'.fill e₃')
+        := SmallStep.ctx_step ctx₀' (by rfl) (by rfl) headSt'
+      rw [← fill_eq] at HB'
+      let result := ih HA' HB' (by rfl) (by rfl) headSt
+      rw [e₂_eq, e₃_eq, ← op'_eq, ← n_eq, result]
+    )
+  )
+  case letInExpr x' ctx₀ e' ih => (
+    let ⟨ctx', e₁_eq', e₃_eq, headSt'⟩ := HB
+    rename_i e₁'' e₃'
+    rw [e₁_eq] at e₁_eq'
+    cases ctx' <;> simp [Ctx.fill] at e₁_eq' e₃_eq
+    case hole => (
+      rw [← e₁_eq', ← e₃_eq, Ctx.updateEnv] at headSt'
+      rw [e₁_eq] at HA
+      exact Eq.symm (headSmallStep_and_smallStep_deterministic headSt' HA)
+    )
+    case letInExpr x'' ctx₀' e'' => (
+      let ⟨x'_eq, ⟨fill_eq, e'_eq⟩⟩ := e₁_eq'
+      let HA' : SmallStep defs V (ctx₀.fill e₁') (ctx₀.fill e₂')
+        := SmallStep.ctx_step ctx₀ (by rfl) (by rfl) headSt
+      let HB' : SmallStep defs V (ctx₀'.fill e₁'') (ctx₀'.fill e₃')
+        := SmallStep.ctx_step ctx₀' (by rfl) (by rfl) headSt'
+      rw [← fill_eq] at HB'
+      let result := ih HA' HB' (by rfl) (by rfl) headSt
+      rw [e₂_eq, e₃_eq, ← x'_eq, ← e'_eq, result]
+    )
+    case letInBody x'' n ctx₀' => (
+      let ⟨x'_eq, ⟨fill_eq, e'_eq⟩⟩ := e₁_eq'
+      let ⟨_, e₁'_eq⟩ := const_eq_fill_implies_hole (Eq.symm fill_eq)
+      rw [← e₁'_eq] at headSt
+      let : False := no_headSmallStep_from_const headSt
+      contradiction
+    )
+  )
+  case letInBody x' n ctx₀ ih => (
+    let ⟨ctx', e₁_eq', e₃_eq, headSt'⟩ := HB
+    rename_i e₁'' e₃'
+    rw [e₁_eq] at e₁_eq'
+    cases ctx' <;> simp [Ctx.fill] at e₁_eq' e₃_eq
+    case hole => (
+      rw [← e₁_eq', ← e₃_eq, Ctx.updateEnv] at headSt'
+      rw [e₁_eq] at HA
+      exact Eq.symm (headSmallStep_and_smallStep_deterministic headSt' HA)
+    )
+    case letInExpr x'' ctx₀' e' => (
+      let ⟨x'_eq, ⟨fill_eq, e'_eq⟩⟩ := e₁_eq'
+      let ⟨_, e₁'_eq⟩ := const_eq_fill_implies_hole fill_eq
+      rw [← e₁'_eq] at headSt'
+      let : False := no_headSmallStep_from_const headSt'
+      contradiction
+    )
+    case letInBody x'' n' ctx₀' => (
+      let ⟨x'_eq, ⟨n'_eq, fill_eq⟩⟩ := e₁_eq'
+      simp [Ctx.updateEnv] at headSt headSt'
+      let HA' : SmallStep defs _ (ctx₀.fill e₁') (ctx₀.fill e₂')
+        := .ctx_step ctx₀ (by rfl) (by rfl) headSt
+      let HB' : SmallStep defs _ (ctx₀'.fill e₁'') (ctx₀'.fill e₃')
+        := .ctx_step ctx₀' (by rfl) (by rfl) headSt'
+      rw [← fill_eq, ← x'_eq, ← n'_eq] at HB'
+      let result := ih HA' HB' (by rfl) (by rfl) headSt
+      rw [e₂_eq, e₃_eq, ← x'_eq, ← n'_eq, result]
     )
   )
 
