@@ -8,7 +8,7 @@ mutual
     | jdgVar {Γ : TypeContext}  {name : String} (H : (name, LLType.nat) ∈ Γ)
                       : TypeJdg Γ (.var name) LLType.nat
     | jdgConst {Γ : TypeContext} {n : ℕ} : TypeJdg Γ (.const n) LLType.nat
-    | jdgFun {Γ : TypeContext} {es : List Expr} {arg_types : List LLType} {T_return : LLType}
+    | jdgFun {f} {Γ : TypeContext} {es : List Expr} {arg_types : List LLType} {T_return : LLType}
                   (H_f : (f, .func arg_types T_return) ∈ Γ)
                   (H_args : TypeJdgList Γ es arg_types)
                         : TypeJdg Γ (.funCall f es) (LLType.func arg_types T_return)
@@ -19,6 +19,7 @@ mutual
                 (H₁ : TypeJdg Γ e₁ LLType.nat)
                 (H₂ : TypeJdg ((name, LLType.nat) :: Γ) e₂ LLType.nat)
                         : TypeJdg  Γ (.letIn name e₁ e₂) .nat
+                        -- нужно переписать, чтобы наследовало правой части тип
 
 
   inductive TypeJdgList : TypeContext -> List Expr -> List LLType -> Prop
