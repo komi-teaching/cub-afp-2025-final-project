@@ -4,7 +4,7 @@ import LocalLang.Ctx
 import Mathlib.Logic.Relation
 
 -- for rewriting (.funCall f es) in terms of let
-def letin_chain (vars : List (String × Expr)) (e : Expr) : Expr :=
+def Expr.addBindings (vars : List (String × Expr)) (e : Expr) : Expr :=
   vars.foldl (fun e' (x, xe) => .letIn x xe e') e
 
 inductive HeadSmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
@@ -13,13 +13,13 @@ inductive HeadSmallStep (defs : Definitions) : Env → Expr → Expr → Prop wh
   | bin_op_step {op : BinOp}
       : n = op.eval e₁ e₂
       → HeadSmallStep defs V (.binOp op (.const e₁) (.const e₂)) (.const n)
-  | letin_const_step {name : String} {n₁ n₂ : ℕ}
+  | let_in_const_step {name : String} {n₁ n₂ : ℕ}
       : HeadSmallStep defs V (.letIn name (.const n₁) (.const n₂)) (.const n₂)
   | fun_step {f : String} {es : List Expr} {ps : List String} {bd : Expr}
       : (h_f : f ∈ defs)
       → (ps = defs[f].parameters)
       → (bd = defs[f].body)
-      → (r = letin_chain (ps.zip es) bd)
+      → (r = bd.addBindings (ps.zip es))
       → (ps.length = es.length)
       → HeadSmallStep defs V (.funCall f es) r
 
@@ -36,13 +36,6 @@ def SmallSteps.single {defs : Definitions} {env : Env} :
     SmallStep defs env e₁ e₂ → SmallSteps defs env e₁ e₂ := by
   intro step
   exact Relation.ReflTransGen.single step
-
-/-
-instance {defs : Definitions} :
-  Trans (SmallStep defs V) (SmallStep defs V) (SmallSteps defs V) where
-    trans st₁ st₂ := Relation.ReflTransGen.trans
-      (Relation.ReflTransGen.single st₁) (Relation.ReflTransGen.single st₂)
--/
 
 -- TODO: prove
 theorem smallSteps_diamond {defs : Definitions} {e₁ e₂ e₃ : Expr}
