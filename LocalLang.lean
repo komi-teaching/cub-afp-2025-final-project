@@ -1,2 +1,3 @@
 import LocalLang.TypingGuarantees
 import LocalLang.EvaluatorCorrectness
+import LocalLang.Semantics
