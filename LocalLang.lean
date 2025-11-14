@@ -1,3 +1,5 @@
 import LocalLang.TypingGuarantees
 import LocalLang.EvaluatorCorrectness
 import LocalLang.Semantics
+import LocalLang.SemanticsExamples
+import LocalLang.SmallStepsDiamond
