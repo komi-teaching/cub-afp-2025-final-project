@@ -4,18 +4,17 @@ import LocalLang.SemanticsLemmas
 lemma headSmallStep_from_var_deterministic {defs : Definitions}
   (Hin : V[x]? = some n) (st : HeadSmallStep defs V (.var x) e) : (.const n = e) := by
     cases st with
-    | var_step Hin' => {
+    | var_step Hin' =>
       rename_i n'
       rw [Hin'] at Hin
       injection Hin with n'_eq_n
       simp [n'_eq_n]
-    }
 
 lemma smallStep_from_var_deterministic {defs : Definitions}
   (Hin : V[x]? = some n) (st : SmallStep defs V (.var x) e) : (.const n = e) := by
     generalize e₀_eq : Expr.var x = e₀ at *
     cases st with
-    | ctx_step ctx e₁'_eq e₂'_eq headSt => {
+    | ctx_step ctx e₁'_eq e₂'_eq headSt =>
       rename_i e₁ e₂
       rw [e₁'_eq] at e₀_eq
       rw [e₂'_eq]
@@ -23,7 +22,6 @@ lemma smallStep_from_var_deterministic {defs : Definitions}
       simp [ctx_eq, Ctx.fill, Ctx.updateEnv] at *
       rw [← e₁_eq] at headSt
       exact headSmallStep_from_var_deterministic Hin headSt
-    }
 
 lemma headSmallStep_from_const_binOp_deterministic {defs : Definitions} {op : BinOp}
   (st : HeadSmallStep defs V (.binOp op (.const n₁) (.const n₂)) e)
@@ -36,7 +34,7 @@ lemma smallStep_from_const_binOp_deterministic {defs : Definitions} {op : BinOp}
   (st : SmallStep defs V (.binOp op (.const n₁) (.const n₂)) e) : (.const (op.eval n₁ n₂) = e) := by
     generalize e₀_eq : Expr.binOp op (.const n₁) (.const n₂) = e₀ at st
     cases st with
-    | ctx_step ctx e₁'_eq e₂'_eq headSt => {
+    | ctx_step ctx e₁'_eq e₂'_eq headSt =>
       rename_i e₁ e₂
       simp [e₁'_eq] at e₀_eq
       cases ctx <;> try simp [Ctx.fill] at *
@@ -58,7 +56,6 @@ lemma smallStep_from_const_binOp_deterministic {defs : Definitions} {op : BinOp}
         let : False := no_headSmallStep_from_const headSt
         contradiction
       )
-    }
 
 lemma headSmallStep_from_const_letIn_deterministic {defs : Definitions}
   (st : HeadSmallStep defs V (.letIn x (.const n₁) (.const n₂)) e) : (.const n₂ = e) := by
@@ -69,7 +66,7 @@ lemma smallStep_from_const_letIn_deterministic {defs : Definitions}
   (st : SmallStep defs V (.letIn x (.const n₁) (.const n₂)) e) : (.const n₂ = e) := by
     generalize e₀_eq : Expr.letIn x (.const n₁) (.const n₂) = e₀ at st
     cases st with
-    | ctx_step ctx e₁'_eq e₂'_eq headSt => {
+    | ctx_step ctx e₁'_eq e₂'_eq headSt =>
       rename_i e₁ e₂
       rw [e₁'_eq] at e₀_eq
       cases ctx <;> try (simp [Ctx.fill] at *)
@@ -91,7 +88,6 @@ lemma smallStep_from_const_letIn_deterministic {defs : Definitions}
         let : False := no_headSmallStep_from_const headSt
         contradiction
       )
-    }
 
 lemma headSmallStep_from_funCall_deterministic {defs : Definitions} {es : List Expr}
   (Hf : f ∈ defs) (st : HeadSmallStep defs V (.funCall f es) e)
@@ -104,7 +100,7 @@ lemma smallStep_from_funCall_deterministic {defs : Definitions} {es : List Expr}
     : (.addBindings (defs[f].parameters.zip es) defs[f].body = e) := by
       generalize e₀_eq : Expr.funCall f es = e₀ at *
       cases st with
-      | ctx_step ctx e₁'_eq e₂'_eq headSt => {
+      | ctx_step ctx e₁'_eq e₂'_eq headSt =>
         rename_i e₁ e₂
         rw [e₁'_eq] at e₀_eq
         cases ctx <;> try (simp [Ctx.fill] at *)
@@ -112,7 +108,6 @@ lemma smallStep_from_funCall_deterministic {defs : Definitions} {es : List Expr}
           rw [← e₀_eq, ← e₂'_eq] at headSt
           exact headSmallStep_from_funCall_deterministic Hf headSt
         )
-      }
 
 lemma headSmallStep_and_smallStep_deterministic {defs : Definitions}
   (HA : HeadSmallStep defs V e₁ e₂) (HB : SmallStep defs V e₁ e₃) : e₂ = e₃ := by

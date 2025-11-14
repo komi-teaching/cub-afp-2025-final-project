@@ -50,39 +50,37 @@ lemma SmallSteps.with_ctx (ctx : Ctx)
   intro e₁'_eq e₂'_eq steps
   rw [e₁'_eq, e₂'_eq]
   apply Relation.ReflTransGen.lift (ctx.fill) ?_ steps
-  simp
   intro e e' step
   exact SmallStep.with_ctx ctx rfl rfl step
 
 lemma var_eq_fill_implies_hole {ctx : Ctx}
-  (H : Expr.var x = ctx.fill e)
+  (eq : Expr.var x = ctx.fill e)
   : (ctx = .hole ∧ Expr.var x = e) := by
-    cases ctx
-    any_goals simp [Ctx.fill] at H
+    cases ctx <;> simp only [Ctx.fill] at eq <;> try contradiction
     constructor
     · rfl
     · assumption
 
 lemma const_eq_fill_implies_hole {ctx : Ctx}
-  (H : Expr.const n = ctx.fill e)
+  (eq : Expr.const n = ctx.fill e)
   : (ctx = .hole ∧ Expr.const n = e) := by
-    cases ctx
-    any_goals simp [Ctx.fill] at H
+    cases ctx <;> simp only [Ctx.fill] at eq <;> try contradiction
     constructor
     · rfl
     · assumption
 
 lemma no_headSmallStep_from_const {defs : Definitions}
-  (st : HeadSmallStep defs V (.const x) e) : False := by
+  : ¬HeadSmallStep defs V (.const x) e := by
+    intro st
     cases st
 
 lemma no_smallStep_from_const {defs : Definitions}
-  (st : SmallStep defs V (.const x) e) : False := by
+  : ¬SmallStep defs V (.const x) e := by
     generalize e₀_eq : Expr.const x = e₀ at *
+    intro st
     cases st with
-    | ctx_step ctx e₁'_eq e₂'_eq headSt => {
+    | ctx_step ctx e₁'_eq e₂'_eq headSt =>
       rw [e₁'_eq] at e₀_eq
       let ⟨ctx_eq, e₁_eq⟩ := const_eq_fill_implies_hole e₀_eq
       rw [← e₁_eq] at headSt
       apply no_headSmallStep_from_const headSt
-    }
