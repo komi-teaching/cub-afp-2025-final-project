@@ -36,8 +36,3 @@ def SmallSteps.single {defs : Definitions} {env : Env} :
     SmallStep defs env e₁ e₂ → SmallSteps defs env e₁ e₂ := by
   intro step
   exact Relation.ReflTransGen.single step
-
--- TODO: prove
-theorem smallSteps_diamond {defs : Definitions} {e₁ e₂ e₃ : Expr}
-  (HA : SmallSteps defs V e₁ e₂) (HB : SmallSteps defs V e₁ e₃)
-  :  ∃ e₄, SmallSteps defs V e₂ e₄ ∧ SmallSteps defs V e₃ e₄ := sorry
