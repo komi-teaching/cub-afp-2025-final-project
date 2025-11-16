@@ -18,8 +18,10 @@ lemma SmallStep.hole_step : HeadSmallStep defs V e₁ e₂ → SmallStep defs V 
 lemma nestCtx_preserves_updateEnv (ctx' ctx : Ctx) {V : Env}
   : ctx'.updateEnv (ctx.updateEnv V) = (ctx.fillWithCtx ctx').updateEnv V := by
   induction ctx generalizing V <;> simp only [Ctx.updateEnv, Ctx.fillWithCtx] <;> (
-    expose_names
-    apply a_ih
+    -- assumption won't work here, since we need to infer the implicit arg {V : Env} of ih
+    -- if we use ih as a named hypothesis, V gets inferred automatically
+    rename_i ih
+    exact ih
   )
 
 lemma nestCtx_preserves_fill (ctx' ctx : Ctx) {e : Expr}
@@ -42,10 +44,9 @@ lemma SmallSteps.with_ctx (ctx : Ctx)
     → SmallSteps defs (ctx.updateEnv V) e₁ e₂ → SmallSteps defs V e₁' e₂' := by
   intro e₁'_eq e₂'_eq steps
   rw [e₁'_eq, e₂'_eq]
-  apply Relation.ReflTransGen.lift (ctx.fill) (by
-    intro e e' step
-    exact SmallStep.with_ctx ctx rfl rfl step
-  ) steps
+  apply Relation.ReflTransGen.lift ctx.fill ?_ steps
+  intro e e' step
+  exact SmallStep.with_ctx ctx rfl rfl step
 
 lemma var_eq_fill_implies_hole {ctx : Ctx}
   (eq : Expr.var x = ctx.fill e)
@@ -75,4 +76,4 @@ lemma no_smallStep_from_const {defs : Definitions}
       rw [e₁'_eq] at e₀_eq
       let ⟨ctx_eq, e₁_eq⟩ := const_eq_fill_implies_hole e₀_eq
       rw [← e₁_eq] at headSt
-      apply no_headSmallStep_from_const headSt
+      exact no_headSmallStep_from_const headSt

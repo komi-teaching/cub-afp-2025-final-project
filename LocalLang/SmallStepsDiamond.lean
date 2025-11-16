@@ -131,45 +131,46 @@ theorem smallStep_deterministic {defs : Definitions}
         cases no_headSmallStep_from_const head_st'
   case binOpLhs.binOpLhs ctx₀ _ _ ih ctx₀' _ _ =>
     injection e₁_eq' with op'_eq fill_eq e'_eq
-    let h_a' := SmallStep.ctx_step ctx₀ (by rfl) (by rfl) head_st
-    let h_b' := SmallStep.ctx_step ctx₀' (by rfl) (by rfl) head_st'
+    let h_a' := SmallStep.ctx_step ctx₀ rfl rfl head_st
+    let h_b' := SmallStep.ctx_step ctx₀' rfl rfl head_st'
     rw [← fill_eq] at h_b'
-    let result := ih h_b' h_a' (by rfl) (by rfl) head_st
+    let result := ih h_b' h_a' rfl rfl head_st
     rw [e₂_eq, e₃_eq, ← op'_eq, ← e'_eq, result]
   case binOpRhs.binOpRhs _ _ ctx₀ ih _ _ ctx₀' =>
     injection e₁_eq' with op'_eq n_eq fill_eq
-    let h_a' := SmallStep.ctx_step ctx₀ (by rfl) (by rfl) head_st
-    let h_b' := SmallStep.ctx_step ctx₀' (by rfl) (by rfl) head_st'
+    let h_a' := SmallStep.ctx_step ctx₀ rfl rfl head_st
+    let h_b' := SmallStep.ctx_step ctx₀' rfl rfl head_st'
     rw [← fill_eq] at h_b'
-    let result := ih h_b' h_a' (by rfl) (by rfl) head_st
+    let result := ih h_b' h_a' rfl rfl head_st
     rw [e₂_eq, e₃_eq, ← op'_eq, ← n_eq, result]
   case letInExpr.letInExpr _ ctx₀ _ ih _ ctx₀' _ =>
     injection e₁_eq' with x'_eq fill_eq e'_eq
-    let h_a' :=SmallStep.ctx_step ctx₀ (by rfl) (by rfl) head_st
-    let h_b' := SmallStep.ctx_step ctx₀' (by rfl) (by rfl) head_st'
+    let h_a' :=SmallStep.ctx_step ctx₀ rfl rfl head_st
+    let h_b' := SmallStep.ctx_step ctx₀' rfl rfl head_st'
     rw [← fill_eq] at h_b'
-    let result := ih h_b' h_a' (by rfl) (by rfl) head_st
+    let result := ih h_b' h_a' rfl rfl head_st
     rw [e₂_eq, e₃_eq, ← x'_eq, ← e'_eq, result]
   case letInBody.letInBody _ _ ctx₀ ih _ _ ctx₀' =>
     injection e₁_eq' with x'_eq n'_eq fill_eq
     injection n'_eq  with n'_eq
     simp only [Ctx.updateEnv] at head_st head_st'
-    let h_a' := SmallStep.ctx_step ctx₀ (by rfl) (by rfl) head_st
-    let h_b' := SmallStep.ctx_step ctx₀' (by rfl) (by rfl) head_st'
+    let h_a' := SmallStep.ctx_step ctx₀ rfl rfl head_st
+    let h_b' := SmallStep.ctx_step ctx₀' rfl rfl head_st'
     rw [← fill_eq, ← x'_eq, ← n'_eq] at h_b'
-    let result := ih h_b' h_a' (by rfl) (by rfl) head_st
+    let result := ih h_b' h_a' rfl rfl head_st
     rw [e₂_eq, e₃_eq, ← x'_eq, ← n'_eq, result]
 
 theorem smallSteps_diamond {defs : Definitions} {e₁ e₂ e₃ : Expr}
   (h_a : SmallSteps defs V e₁ e₂) (h_b : SmallSteps defs V e₁ e₃)
   :  ∃ e₄, SmallSteps defs V e₂ e₄ ∧ SmallSteps defs V e₃ e₄ := by
-  let ⟨e₄, _⟩ := Relation.church_rosser (by
-    intro a b c st_a st_b
-    use c
-    let b_eq_c := smallStep_deterministic st_a st_b
-    rw [b_eq_c]
-    constructor
-    · exact Relation.ReflGen.refl
-    · exact Relation.ReflTransGen.refl
-  ) h_a h_b
-  use e₄
+  suffices Relation.Join (SmallSteps defs V) e₂ e₃ by
+    let ⟨e₄, _⟩ := this
+    use e₄
+  apply Relation.church_rosser ?_ h_a h_b
+  intro a b c st_a st_b
+  use c
+  let b_eq_c := smallStep_deterministic st_a st_b
+  rw [b_eq_c]
+  constructor
+  · exact Relation.ReflGen.refl
+  · exact Relation.ReflTransGen.refl
