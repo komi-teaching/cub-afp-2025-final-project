@@ -5,6 +5,7 @@ import LocalLang.EvaluatorCorrectness
 import LocalLang.Semantics
 import LocalLang.SemanticsExamples
 import LocalLang.SemanticsLemmas
+import LocalLang.SmallStepsDiamond
 import LocalLang.Types
 import LocalLang.Typing
 import LocalLang.TypingExamples
