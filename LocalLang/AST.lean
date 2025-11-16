@@ -21,3 +21,5 @@ abbrev Definitions := Std.HashMap String Function
 structure Program where
   definitions : Definitions
   main : Expr
+
+abbrev Env := Std.HashMap String ℕ

@@ -7,8 +7,6 @@ inductive Ctx : Type where
   | letInExpr : String → Ctx → Expr → Ctx
   | letInBody : String → ℕ → Ctx → Ctx
 
-abbrev Env := Std.HashMap String ℕ
-
 @[reducible] def Ctx.fill (e : Expr) : Ctx → Expr
   | hole => e
   | binOpLhs ctx op e' => Expr.binOp op (ctx.fill e) e'
