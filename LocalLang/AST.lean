@@ -12,12 +12,14 @@ inductive Expr where
   | letIn (name : String) (e₁ e₂ : Expr)
   | funCall (f : String) (es : List Expr)
 
-structure Function where
+structure Func where
   parameters : List String
   body : Expr
 
-abbrev Definitions := Std.HashMap String Function
+abbrev Definitions := Std.HashMap String Func
 
 structure Program where
   definitions : Definitions
   main : Expr
+
+abbrev Env := Std.HashMap String ℕ
