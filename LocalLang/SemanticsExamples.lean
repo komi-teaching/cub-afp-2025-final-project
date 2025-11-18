@@ -15,11 +15,11 @@ instance : OfNat Expr n where
   ofNat := .const n
 
 abbrev f_body : Expr := (.funCall "g" [ "x" + 1 ]) + "x"
-abbrev f : Function := {
+abbrev f : Func := {
   parameters := ["x"],
   body := f_body
 }
-abbrev g : Function := {
+abbrev g : Func := {
   parameters := ["x"],
   body := "x"
 }
