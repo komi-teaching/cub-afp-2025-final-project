@@ -2,6 +2,7 @@ import LocalLang.AST
 import LocalLang.Ctx
 import LocalLang.Evaluator
 import LocalLang.EvaluatorCorrectness
+import LocalLang.EvaluatorTests
 import LocalLang.Semantics
 import LocalLang.SemanticsExamples
 import LocalLang.SemanticsLemmas
