@@ -12,8 +12,6 @@ inductive Expr where
   | letIn (name : String) (e₁ e₂ : Expr)
   | funCall (f : String) (es : List Expr)
 
--- the name Function was shadowed by the standard library, which caused problems.
--- renamed to Func
 structure Func where
   parameters : List String
   body : Expr
