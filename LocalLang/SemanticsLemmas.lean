@@ -15,65 +15,115 @@ lemma SmallStep.hole_step : HeadSmallStep defs V e₁ e₂ → SmallStep defs V 
   intro hstep
   exact .ctx_step .hole (by rw [Ctx.fill]) (by rw [Ctx.fill]) hstep
 
-lemma nestCtx_preserves_updateEnv (ctx' ctx : Ctx) {V : Env}
+@[simp] lemma nestCtx_preserves_updateEnv (ctx' ctx : Ctx) {V : Env}
   : ctx'.updateEnv (ctx.updateEnv V) = (ctx.fillWithCtx ctx').updateEnv V := by
-  induction ctx generalizing V <;> simp only [Ctx.updateEnv, Ctx.fillWithCtx] <;> (
-    -- assumption won't work here, since we need to infer the implicit arg {V : Env} of ih
-    -- if we use ih as a named hypothesis, V gets inferred automatically
-    rename_i ih
-    exact ih
-  )
+  induction ctx generalizing V <;> simp_all [Ctx.updateEnv, Ctx.fillWithCtx]
 
-lemma nestCtx_preserves_fill (ctx' ctx : Ctx) {e : Expr}
+@[simp] lemma nestCtx_preserves_fill (ctx' ctx : Ctx) {e : Expr}
   : ctx.fill (ctx'.fill e) = (ctx.fillWithCtx ctx').fill e := by
-  induction ctx <;> simp only [Ctx.fill, Ctx.fillWithCtx] <;> congr
+  induction ctx <;> simp_all only [Ctx.fill, Ctx.fillWithCtx]
+
+lemma fill_injective {ctx : Ctx}
+    : ctx.fill e₁ = ctx.fill e₂ → e₁ = e₂ := by
+  induction ctx <;> simp_all
 
 lemma SmallStep.with_ctx (ctx : Ctx)
     : (e₁' = ctx.fill e₁) → (e₂' = ctx.fill e₂)
     → SmallStep defs (ctx.updateEnv V) e₁ e₂ → SmallStep defs V e₁' e₂' := by
-  intro e₁'_eq e₂'_eq step
-  let ⟨ctx', e₁_eq, e₂_eq, hstep⟩ := step
-  rename_i e₁_h e₂_h
-  rw [nestCtx_preserves_updateEnv ctx' ctx] at hstep
-  apply ctx_step (ctx.fillWithCtx ctx') ?_ ?_ hstep
-  · rw [e₁'_eq, e₁_eq]; apply nestCtx_preserves_fill
-  · rw [e₂'_eq, e₂_eq]; apply nestCtx_preserves_fill
+  rintro rfl rfl ⟨ctx', rfl, rfl, hstep⟩
+  simp only [nestCtx_preserves_updateEnv, nestCtx_preserves_fill] at *
+  apply ctx_step <;> trivial
 
 lemma SmallSteps.with_ctx (ctx : Ctx)
     : (e₁' = ctx.fill e₁) → (e₂' = ctx.fill e₂)
     → SmallSteps defs (ctx.updateEnv V) e₁ e₂ → SmallSteps defs V e₁' e₂' := by
-  intro e₁'_eq e₂'_eq steps
-  rw [e₁'_eq, e₂'_eq]
+  rintro rfl rfl steps
   apply Relation.ReflTransGen.lift ctx.fill ?_ steps
-  intro e e' step
+  intro _ _ step
   exact SmallStep.with_ctx ctx rfl rfl step
 
-lemma var_eq_fill_implies_hole {ctx : Ctx}
-  (eq : Expr.var x = ctx.fill e)
-  : (ctx = .hole ∧ Expr.var x = e) := by
-    cases ctx <;> simp only [Ctx.fill] at eq <;> try contradiction
-    constructor
-    · rfl
-    · assumption
+lemma value_not_redex : IsValue e → ¬Redex e := by rintro ⟨⟩ ⟨⟩
 
-lemma const_eq_fill_implies_hole {ctx : Ctx}
-  (eq : Expr.const n = ctx.fill e)
-  : (ctx = .hole ∧ Expr.const n = e) := by
-    cases ctx <;> simp only [Ctx.fill] at eq <;> try contradiction
-    constructor
-    · rfl
-    · assumption
+lemma fill_is_value_implies_hole {ctx : Ctx} (is_value : IsValue (ctx.fill e))
+    : ctx = .hole := by
+  cases ctx
+  case hole => rfl
+  all_goals cases is_value
 
-lemma no_headSmallStep_from_const {defs : Definitions}
-  : ¬HeadSmallStep defs V (.const x) e := nofun
+lemma fill_is_value_implies_eq {ctx : Ctx} (is_value : IsValue (ctx.fill e))
+    : ctx.fill e = e := by
+  suffices ctx = .hole by simp [this]
+  exact fill_is_value_implies_hole is_value
 
-lemma no_smallStep_from_const {defs : Definitions}
-  : ¬SmallStep defs V (.const x) e := by
-    generalize e₀_eq : Expr.const x = e₀ at *
-    intro st
-    cases st with
-    | ctx_step ctx e₁'_eq e₂'_eq headSt =>
-      rw [e₁'_eq] at e₀_eq
-      let ⟨ctx_eq, e₁_eq⟩ := const_eq_fill_implies_hole e₀_eq
-      rw [← e₁_eq] at headSt
-      exact no_headSmallStep_from_const headSt
+lemma fill_is_value_implies_value {ctx : Ctx} (is_value : IsValue (ctx.fill e))
+    : IsValue e := by
+  suffices ctx = .hole by simpa [this] using is_value
+  exact fill_is_value_implies_hole is_value
+
+lemma fill_redex_implies_hole_or_value {ctx : Ctx} (redex : Redex (ctx.fill e))
+    : ctx = .hole ∨ IsValue e := by
+  cases ctx
+  case hole => left; rfl
+  all_goals
+    right
+    cases redex
+    apply fill_is_value_implies_value
+    trivial
+
+lemma fill_redex_redex_implies_hole {ctx : Ctx} (rout : Redex (ctx.fill e)) (rin : Redex e)
+    : ctx = .hole := by
+  cases fill_redex_implies_hole_or_value rout
+  · assumption
+  · exfalso
+    apply value_not_redex <;> trivial
+
+lemma redex_of_headSmallStep : HeadSmallStep defs V e₁ e₂ → Redex e₁ := by
+  rintro ⟨⟩ <;> repeat constructor
+
+lemma fill_redex_injective_in_ctx {ctx₁ ctx₂ : Ctx} (r₁ : Redex e₁) (r₂ : Redex e₂)
+    : ctx₁.fill e₁ = ctx₂.fill e₂ → ctx₁ = ctx₂ := by
+  intro eq
+  induction ctx₂ generalizing ctx₁
+  · cases eq
+    apply fill_redex_redex_implies_hole <;> assumption
+  · rename_i ctx' op' e' ih
+    cases ctx₁
+    · cases eq
+      symm
+      apply fill_redex_redex_implies_hole <;> assumption
+    · rename_i ctx'' op'' e''
+      simp [Ctx.fill] at eq
+      rcases eq with ⟨ rfl, eq, rfl ⟩
+      have : ctx'' = ctx' := by apply ih; assumption
+      rw [this]
+    · rename_i n op'' ctx''
+      simp [Ctx.fill] at eq
+      rcases eq with ⟨ rfl, eq, rfl ⟩
+      -- need to show a messy contradiction
+      sorry
+    · sorry
+    · sorry
+  · sorry
+  · sorry
+  · sorry
+
+lemma ctx_and_redex_of_smallStep
+    : SmallStep defs V e₁ e₂
+    → ∃ (ctx : Ctx), ∃ e₁' e₂', e₁ = ctx.fill e₁' ∧ e₂ = ctx.fill e₂' ∧ Redex e₁' := by
+  rintro ⟨ctx, rfl, rfl, step⟩
+  rename_i e₁ e₂
+  use ctx, e₁, e₂
+  and_intros <;> try rfl
+  apply redex_of_headSmallStep <;> assumption
+
+lemma no_headSmallStep_from_value {defs : Definitions} (is_value : IsValue v)
+    : ¬HeadSmallStep defs V v e := by
+  cases is_value
+  nofun
+
+lemma no_smallStep_from_value {defs : Definitions} (is_value : IsValue v)
+    : ¬SmallStep defs V v e := by
+  rintro ⟨ctx, rfl, rfl, step⟩
+  apply (no_headSmallStep_from_value ?_ step)
+  apply fill_is_value_implies_value
+  assumption

@@ -8,20 +8,32 @@ def Expr.addBindings (vars : List (String × Expr)) (e : Expr) : Expr :=
   vars.foldl (fun e' (x, xe) => .letIn x xe e') e
 
 inductive HeadSmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
-  | var_step : V[x]? = some n →
+  | var_step n : V[x]? = some n →
       HeadSmallStep defs V (.var x) (.const n)
   | bin_op_step {op : BinOp}
       : n = op.eval e₁ e₂
       → HeadSmallStep defs V (.binOp op (.const e₁) (.const e₂)) (.const n)
-  | let_in_const_step {name : String} {n₁ n₂ : ℕ}
+  | let_in_step {name : String} {n₁ n₂ : ℕ}
       : HeadSmallStep defs V (.letIn name (.const n₁) (.const n₂)) (.const n₂)
-  | fun_step {f : String} {es : List Expr} {ps : List String} {bd : Expr}
+  | fun_call_step {f : String} {es : List Expr} {ps : List String} {bd : Expr}
       : (h_f : f ∈ defs)
       → (ps = defs[f].parameters)
       → (bd = defs[f].body)
       → (r = bd.addBindings (ps.zip es))
       → (ps.length = es.length)
       → HeadSmallStep defs V (.funCall f es) r
+
+inductive IsValue : Expr → Prop where
+  | const : IsValue (.const n)
+
+inductive Redex : Expr → Prop where
+  | var : Redex (.var x)
+  | bin_op {op : BinOp}
+      : IsValue v₁ → IsValue v₂ → Redex (.binOp op v₁ v₂)
+  | let_in {name : String}
+      : IsValue v₁ → IsValue v₂ → Redex (.letIn name v₁ v₂)
+  | fun_call {vs : List Expr}
+      : Redex (.funCall f vs)
 
 inductive SmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
   | ctx_step (ctx : Ctx) {V : Env}

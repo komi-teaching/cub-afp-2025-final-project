@@ -42,7 +42,7 @@ lemma f_steps
       calc
         SmallStep defs locals _ (.letIn "x" ("x" + 1) "x") := by
           apply SmallStep.hole_step
-          apply (HeadSmallStep.fun_step ?_ rfl) <;> try rw [defs_g]
+          apply (HeadSmallStep.fun_call_step ?_ rfl) <;> try rw [defs_g]
           · simp
           · rfl
           · simp
@@ -77,7 +77,7 @@ example : SmallSteps defs ∅ (.funCall "f" [0]) 1 := by
   calc
     SmallStep defs ∅ _ (.letIn "x" 0 f_body) := by
       apply SmallStep.hole_step
-      apply (HeadSmallStep.fun_step ?_ rfl) <;> try rw [defs_f]
+      apply (HeadSmallStep.fun_call_step ?_ rfl) <;> try rw [defs_f]
       · simp
       · rfl
       · simp
