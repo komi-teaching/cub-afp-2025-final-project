@@ -3,10 +3,6 @@ import LocalLang.Evaluator
 import LocalLang.Ctx
 import Mathlib.Logic.Relation
 
--- for rewriting (.funCall f es) in terms of let
-def Expr.addBindings (vars : List (String × Expr)) (e : Expr) : Expr :=
-  vars.foldl (fun e' (x, xe) => .letIn x xe e') e
-
 inductive HeadSmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
   | var_step : V[x]? = some n →
       HeadSmallStep defs V (.var x) (.const n)

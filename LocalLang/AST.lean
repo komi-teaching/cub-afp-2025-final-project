@@ -12,6 +12,10 @@ inductive Expr where
   | letIn (name : String) (e₁ e₂ : Expr)
   | funCall (f : String) (es : List Expr)
 
+-- for rewriting (.funCall f es) in terms of let
+def Expr.addBindings (vars : List (String × Expr)) (e : Expr) : Expr :=
+  vars.foldl (fun e' (x, xe) => .letIn x xe e') e
+
 structure Func where
   parameters : List String
   body : Expr
