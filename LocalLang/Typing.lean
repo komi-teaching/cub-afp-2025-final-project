@@ -5,8 +5,8 @@ import LocalLang.Types
 
 mutual
   inductive TypeJdg : TypeContext → Expr → LLType → Prop where
-    | jdgVar {Γ : TypeContext}  {name : String} (H : (name, LLType.nat) ∈ Γ)
-                      : TypeJdg Γ (.var name) LLType.nat
+    | jdgVar {Γ : TypeContext}  {name : String} {ty : LLType} (H : (name, ty) ∈ Γ)
+                      : TypeJdg Γ (.var name) ty
     | jdgConst {Γ : TypeContext} {n : ℕ} : TypeJdg Γ (.const n) LLType.nat
     | jdgFun {f} {Γ : TypeContext} {es : List Expr} {arg_types : List LLType} {T_return : LLType}
                   (H_f : (f, .func arg_types T_return) ∈ Γ)
@@ -15,11 +15,10 @@ mutual
     | jdgBinOp {Γ : TypeContext} {op : BinOp} {e₁ e₂ : Expr}
                 (H₁ : TypeJdg Γ e₁ LLType.nat) (H₂ : TypeJdg Γ e₂ LLType.nat)
                         : TypeJdg Γ (.binOp op e₁ e₂) .nat
-    | jdgLetIn {Γ : TypeContext} {name : String} {e₁ e₂ : Expr}
-                (H₁ : TypeJdg Γ e₁ LLType.nat)
-                (H₂ : TypeJdg ((name, LLType.nat) :: Γ) e₂ LLType.nat)
-                        : TypeJdg  Γ (.letIn name e₁ e₂) .nat
-                        -- нужно переписать, чтобы наследовало правой части тип
+    | jdgLetIn {Γ : TypeContext} {name : String} {e₁ e₂ : Expr} {ty₁ ty₂ : LLType}
+                (H₁ : TypeJdg Γ e₁ ty₁)
+                (H₂ : TypeJdg ((name, ty₁) :: Γ) e₂ ty₂)
+                        : TypeJdg  Γ (.letIn name e₁ e₂) ty₂
 
 
   inductive TypeJdgList : TypeContext -> List Expr -> List LLType -> Prop
