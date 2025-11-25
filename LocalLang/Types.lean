@@ -4,4 +4,4 @@ inductive LLType where
   | nat
   | func (paramTypes : List LLType) (retType : LLType)
 
-abbrev TypeContext := List (String × LLType) -- context, list of vars
+abbrev TypeContext := Std.HashMap String LLType
