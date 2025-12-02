@@ -21,14 +21,16 @@ theorem addBindings_typing {ps : List String} {es : List Expr} {bd : Expr}
   (f : String) (h_args : Γ[f]? = some (LLType.func arg_types T_ret))
   (f_in_defs : f ∈ defs) (eq_bd_defs : bd = defs[f].body)
   : TypeJdg Γ (Expr.addBindings (ps.zip es) bd) T_ret
-    := by induction ps with
+    :=
+    by
+      generalize qs_equality : (ps.zip es) = qs
+      induction qs with
       | nil =>
         simp [Expr.addBindings]
         let res := ctxRespectDefs T_ret arg_types f f_in_defs h_args
         rw [eq_bd_defs.symm] at res
         apply res
-      | cons head tail ih =>
-        sorry
+      | cons head tail ih => sorry
 
 
 -- TODO: prove
