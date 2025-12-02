@@ -23,7 +23,7 @@ theorem preservation (Γ : TypeContext) (e e' : Expr) (ty : LLType) (defs : Defi
       constructor
   · cases h_jdg
     · rename_i H₁ H₂
-      apply TypeJdg.jdgConst
+      apply TypeJdg.jdg_const
   · rename_i name val n
     cases h_jdg
     · rename_i H₁ H₂
