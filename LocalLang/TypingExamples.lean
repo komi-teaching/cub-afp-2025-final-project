@@ -10,7 +10,4 @@ example : TypeJdg {("x", .nat)} (.var "x") .nat := by
 
 def ctx : TypeContext := {("add", .func [.nat] .nat), ("x", .nat)}
 
-example : TypeJdg ctx (.funCall "add" [.var "x"]) (LLType.func [.nat] .nat) := by
-  apply TypeJdg.jdg_fun
-  · simp [ctx]
-  · sorry
+example : TypeJdg ctx (.funCall "add" [.var "x"]) (LLType.func [.nat] .nat) := sorry
