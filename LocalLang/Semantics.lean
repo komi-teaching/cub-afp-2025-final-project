@@ -14,7 +14,8 @@ inductive HeadSmallStep : Env → Expr → Expr → Prop where
       HeadSmallStep V (.var x) (.value v)
   | bin_op_step {op : BinOp}
       : n = op.eval n₁ n₂
-      → HeadSmallStep V (.binOp op (.value (.nat n₁)) (.value (.nat n₂))) (.const n)
+      → HeadSmallStep V (.binOp op (.value (.nat n₁)) (.value (.nat n₂)))
+        (.value (.nat (op.eval n₁ n₂)))
   | let_in_const_step {name : String} {v₁ v₂ : Value}
       : HeadSmallStep V (.letIn name (.value v₁) (.value v₂)) (.value v₂)
   | fun_step {es : List Expr} {ps : List String} {bd : Expr}
