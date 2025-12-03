@@ -42,13 +42,13 @@ lemma smallStep_from_var_deterministic
 
 lemma headSmallStep_from_value_binOp_deterministic {op : BinOp}
   (st : HeadSmallStep V (.binOp op (.value (.nat n₁)) (.value (.nat n₂))) e)
-  : e = .const (op.eval n₁ n₂) := by
-  cases st <;> simpa
+  : e = .value (.nat (op.eval n₁ n₂)) := by
+  cases st <;> simp
 
 -- TODO: extract repeating parts
 lemma smallStep_from_value_binOp_deterministic {op : BinOp}
   (st : SmallStep V (.binOp op (.value (.nat n₁)) (.value (.nat n₂))) e)
-  : e = .const (op.eval n₁ n₂) := by
+  : e = .value (.nat (op.eval n₁ n₂)) := by
   cases st with
   | ctx_step ctx e₁'_eq e₂'_eq head_st =>
     rename_i e₁ e₂
@@ -117,10 +117,7 @@ lemma headSmallStep_and_smallStep_deterministic
     rw [h_in'] at h_in
     injection h_in with n_eq
     rw [n_eq, e_eq]
-  | bin_op_step n_eq =>
-    let result := smallStep_from_value_binOp_deterministic h_a
-    rw [← n_eq] at result
-    assumption
+  | bin_op_step n_eq => exact smallStep_from_value_binOp_deterministic h_a
   | let_in_const_step => exact smallStep_from_const_letIn_deterministic h_a
   | fun_step h_len h_r =>
     let ⟨_, e₂_eq⟩ := smallStep_from_funCall_deterministic h_a
