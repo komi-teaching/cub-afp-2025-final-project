@@ -52,6 +52,14 @@ lemma var_eq_fill_implies_hole {ctx : Ctx}
     · rfl
     · assumption
 
+lemma value_eq_fill_implies_hole {ctx : Ctx}
+  (eq : Expr.value v = ctx.fill e)
+  : (ctx = .hole ∧ Expr.value v = e) := by
+    cases ctx <;> simp only [Ctx.fill] at eq <;> try contradiction
+    constructor
+    · rfl
+    · assumption
+
 lemma const_eq_fill_implies_hole {ctx : Ctx}
   (eq : Expr.const n = ctx.fill e)
   : (ctx = .hole ∧ Expr.const n = e) := by
