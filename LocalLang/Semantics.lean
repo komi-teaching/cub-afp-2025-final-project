@@ -4,35 +4,35 @@ import LocalLang.Ctx
 import Mathlib.Logic.Relation
 
 -- for rewriting (.funCall f es) in terms of let
-def Expr.addBindings (vars : List (String × Expr)) (e : Expr) : Expr :=
-  vars.foldl (fun e' (x, xe) => .letIn x xe e') e
+def Expr.addBindings (ps : List String) (es : List Expr) (e : Expr)
+  (_ : ps.length = es.length) : Expr :=
+  (ps.zip es).foldl (fun e' (x, xe) => .letIn x xe e') e
 
-inductive HeadSmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
-  | var_step : V[x]? = some n →
-      HeadSmallStep defs V (.var x) (.const n)
+inductive HeadSmallStep : Env → Expr → Expr → Prop where
+  | const_step : HeadSmallStep V (.const n) (.value (.nat n))
+  | var_step : V[x]? = some v →
+      HeadSmallStep V (.var x) (.value v)
   | bin_op_step {op : BinOp}
-      : n = op.eval e₁ e₂
-      → HeadSmallStep defs V (.binOp op (.const e₁) (.const e₂)) (.const n)
-  | let_in_const_step {name : String} {n₁ n₂ : ℕ}
-      : HeadSmallStep defs V (.letIn name (.const n₁) (.const n₂)) (.const n₂)
-  | fun_step {f : String} {es : List Expr} {ps : List String} {bd : Expr}
-      : (h_f : f ∈ defs)
-      → (ps = defs[f].parameters)
-      → (bd = defs[f].body)
-      → (r = bd.addBindings (ps.zip es))
-      → (ps.length = es.length)
-      → HeadSmallStep defs V (.funCall f es) r
+      : n = op.eval n₁ n₂
+      → HeadSmallStep V (.binOp op (.value (.nat n₁)) (.value (.nat n₂)))
+        (.value (.nat (op.eval n₁ n₂)))
+  | let_in_const_step {name : String} {v₁ v₂ : Value}
+      : HeadSmallStep V (.letIn name (.value v₁) (.value v₂)) (.value v₂)
+  | fun_step {es : List Expr} {ps : List String} {bd : Expr}
+      : (h_len : ps.length = es.length)
+      → (r = bd.addBindings ps es h_len)
+      → HeadSmallStep V (.funCall (.value (.closure ps bd)) es) r
 
-inductive SmallStep (defs : Definitions) : Env → Expr → Expr → Prop where
+inductive SmallStep : Env → Expr → Expr → Prop where
   | ctx_step (ctx : Ctx) {V : Env}
       : (e₁' = ctx.fill e₁) → (e₂' = ctx.fill e₂)
-      → HeadSmallStep defs (ctx.updateEnv V) e₁ e₂
-      → SmallStep defs V e₁' e₂'
+      → HeadSmallStep (ctx.updateEnv V) e₁ e₂
+      → SmallStep V e₁' e₂'
 
-abbrev SmallSteps (defs : Definitions) (env : Env) : Expr → Expr → Prop :=
-  Relation.ReflTransGen (SmallStep defs env)
+abbrev SmallSteps (env : Env) : Expr → Expr → Prop :=
+  Relation.ReflTransGen (SmallStep env)
 
-def SmallSteps.single {defs : Definitions} {env : Env} :
-    SmallStep defs env e₁ e₂ → SmallSteps defs env e₁ e₂ := by
+def SmallSteps.single {env : Env} :
+    SmallStep env e₁ e₂ → SmallSteps env e₁ e₂ := by
   intro step
   exact Relation.ReflTransGen.single step

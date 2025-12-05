@@ -1,17 +1,13 @@
 import LocalLang.Semantics
 
-variable {defs : Definitions}
-
 instance :
-  Trans (SmallStep defs V) (SmallStep defs V) (SmallSteps defs V) where
+  Trans (SmallStep V) (SmallStep V) (SmallSteps V) where
     trans st₁ st₂ := Relation.ReflTransGen.trans
       (Relation.ReflTransGen.single st₁) (Relation.ReflTransGen.single st₂)
 
-@[simp] lemma addBindings_single {e xe : Expr}
-    : e.addBindings [(x, xe)] = Expr.letIn x xe e := by
-  simp [Expr.addBindings]
+-- @[simp] lemma addBindings_single {e xe : Expr}
 
-lemma SmallStep.hole_step : HeadSmallStep defs V e₁ e₂ → SmallStep defs V e₁ e₂ := by
+lemma SmallStep.hole_step : HeadSmallStep V e₁ e₂ → SmallStep V e₁ e₂ := by
   intro hstep
   exact .ctx_step .hole (by rw [Ctx.fill]) (by rw [Ctx.fill]) hstep
 
@@ -30,7 +26,7 @@ lemma nestCtx_preserves_fill (ctx' ctx : Ctx) {e : Expr}
 
 lemma SmallStep.with_ctx (ctx : Ctx)
     : (e₁' = ctx.fill e₁) → (e₂' = ctx.fill e₂)
-    → SmallStep defs (ctx.updateEnv V) e₁ e₂ → SmallStep defs V e₁' e₂' := by
+    → SmallStep (ctx.updateEnv V) e₁ e₂ → SmallStep V e₁' e₂' := by
   intro e₁'_eq e₂'_eq step
   let ⟨ctx', e₁_eq, e₂_eq, hstep⟩ := step
   rename_i e₁_h e₂_h
@@ -41,7 +37,7 @@ lemma SmallStep.with_ctx (ctx : Ctx)
 
 lemma SmallSteps.with_ctx (ctx : Ctx)
     : (e₁' = ctx.fill e₁) → (e₂' = ctx.fill e₂)
-    → SmallSteps defs (ctx.updateEnv V) e₁ e₂ → SmallSteps defs V e₁' e₂' := by
+    → SmallSteps (ctx.updateEnv V) e₁ e₂ → SmallSteps V e₁' e₂' := by
   intro e₁'_eq e₂'_eq steps
   rw [e₁'_eq, e₂'_eq]
   apply Relation.ReflTransGen.lift ctx.fill ?_ steps
@@ -64,16 +60,8 @@ lemma const_eq_fill_implies_hole {ctx : Ctx}
     · rfl
     · assumption
 
-lemma no_headSmallStep_from_const {defs : Definitions}
-  : ¬HeadSmallStep defs V (.const x) e := nofun
+lemma no_headSmallStep_from_value
+  : ¬HeadSmallStep V (.value x) e := nofun
 
-lemma no_smallStep_from_const {defs : Definitions}
-  : ¬SmallStep defs V (.const x) e := by
-    generalize e₀_eq : Expr.const x = e₀ at *
-    intro st
-    cases st with
-    | ctx_step ctx e₁'_eq e₂'_eq headSt =>
-      rw [e₁'_eq] at e₀_eq
-      let ⟨ctx_eq, e₁_eq⟩ := const_eq_fill_implies_hole e₀_eq
-      rw [← e₁_eq] at headSt
-      exact no_headSmallStep_from_const headSt
+lemma no_smallStep_from_value
+  : ¬SmallStep V (.value x) e := sorry
