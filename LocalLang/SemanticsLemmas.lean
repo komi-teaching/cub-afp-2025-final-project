@@ -5,9 +5,7 @@ instance :
     trans st₁ st₂ := Relation.ReflTransGen.trans
       (Relation.ReflTransGen.single st₁) (Relation.ReflTransGen.single st₂)
 
-@[simp] lemma addBindings_single {e xe : Expr}
-    : e.addBindings [x] [xe] (by simp) = Expr.letIn x xe e := by
-  simp [Expr.addBindings]
+-- @[simp] lemma addBindings_single {e xe : Expr}
 
 lemma SmallStep.hole_step : HeadSmallStep V e₁ e₂ → SmallStep V e₁ e₂ := by
   intro hstep
@@ -54,14 +52,6 @@ lemma var_eq_fill_implies_hole {ctx : Ctx}
     · rfl
     · assumption
 
-lemma value_eq_fill_implies_hole {ctx : Ctx}
-  (eq : Expr.value v = ctx.fill e)
-  : (ctx = .hole ∧ Expr.value v = e) := by
-    cases ctx <;> simp only [Ctx.fill] at eq <;> try contradiction
-    constructor
-    · rfl
-    · assumption
-
 lemma const_eq_fill_implies_hole {ctx : Ctx}
   (eq : Expr.const n = ctx.fill e)
   : (ctx = .hole ∧ Expr.const n = e) := by
@@ -70,15 +60,8 @@ lemma const_eq_fill_implies_hole {ctx : Ctx}
     · rfl
     · assumption
 
-lemma no_headSmallStep_from_val : ¬HeadSmallStep V (.value v) e := nofun
+lemma no_headSmallStep_from_value
+  : ¬HeadSmallStep V (.value x) e := nofun
 
-lemma no_smallStep_from_val
-  : ¬SmallStep V (.value v) e := by
-    generalize e₀_eq : Expr.value v = e₀ at *
-    intro st
-    cases st with
-    | ctx_step ctx e₁'_eq e₂'_eq headSt =>
-      rw [e₁'_eq] at e₀_eq
-      let ⟨ctx_eq, e₁_eq⟩ := value_eq_fill_implies_hole e₀_eq
-      rw [← e₁_eq] at headSt
-      exact no_headSmallStep_from_val headSt
+lemma no_smallStep_from_value
+  : ¬SmallStep V (.value x) e := sorry
