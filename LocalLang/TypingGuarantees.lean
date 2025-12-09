@@ -4,65 +4,75 @@ import LocalLang.Types
 import LocalLang.Typing
 
 def EnvRespectsCtx (Γ : TypeContext) (V : Env) : Prop :=
-  ∀ (x : String) (n : ℕ), V[x]? = some n → Γ[x]? = LLType.nat
+  ∀ (x : String) (v : Value), V[x]? = v → ∃ ty, Γ[x]? = some ty ∧ v.TypeJdg ty
 
 def CtxRespectsEnv (V : Env) (Γ : TypeContext) : Prop :=
-  ∀ x : String, Γ[x]? = some LLType.nat → x ∈ V
+  ∀ (x : String) (ty : LLType), Γ[x]? = some ty
+  → ∃ v, V[x]? = some v ∧ v.TypeJdg ty
 
-def CtxRespectsDefs (Γ : TypeContext) (defs : Definitions) : Prop :=
-   (T_ret : LLType) → (arg_types : List LLType) → (f : String) → (f_in_defs : f ∈ defs) →
-    (h_type : Γ[f]? = some (LLType.func arg_types T_ret)) →
-    (TypeJdg Γ defs[f].body T_ret)
+theorem addBindings_typing (Γ : TypeContext) (ps : List String) (es : List Expr)
+                           (bd : Expr) (ty : LLType)
+                           (H_len : ps.length = es.length) (arg_types : List LLType)
+  (H_args : Expr.TypeJdgList Γ es arg_types)
+  (body_jdg : Expr.TypeJdg Γ (Expr.value (Value.closure ps bd)) (LLType.func arg_types ty))
+  : Expr.TypeJdg Γ (Expr.addBindings ps es bd H_len) ty := by
+  generalize qs_equality : (ps.zip es) = qs
+  induction qs with
+  | nil =>
+          simp [Expr.addBindings]
+          rw [qs_equality]
+          simp
+          rw [List.zip_eq_nil_iff] at qs_equality
+          have h_ps_nil : ps = [] := by
+           cases qs_equality with
+           | inl h => apply h
+           | inr h =>
+             rw [h] at H_len
+             exact List.eq_nil_of_length_eq_zero H_len
+          cases body_jdg with
+          | jdg_value h_value =>
+            cases h_value with
+            | jdg_closure body_jdg' =>
+              simp [h_ps_nil] at body_jdg'
+              sorry
+  | cons head tail ih => sorry
 
 
-theorem addBindings_typing {ps : List String} {es : List Expr} {bd : Expr}
-                                {T_ret : LLType} {arg_types : List LLType}
-  {defs : Definitions} (ctxRespectDefs : CtxRespectsDefs Γ defs)
-  (f : String) (h_args : Γ[f]? = some (LLType.func arg_types T_ret))
-  (f_in_defs : f ∈ defs) (eq_bd_defs : bd = defs[f].body)
-  : TypeJdg Γ (Expr.addBindings (ps.zip es) bd) T_ret
-    :=
-    by
-      generalize qs_equality : (ps.zip es) = qs
-      induction qs with
-      | nil =>
-        simp [Expr.addBindings]
-        let res := ctxRespectDefs T_ret arg_types f f_in_defs h_args
-        rw [eq_bd_defs.symm] at res
-        apply res
-      | cons head tail ih => sorry
-
-
--- TODO: prove
--- TODO: V and Γ should be related
-theorem preservation (Γ : TypeContext) (e e' : Expr) (ty : LLType) (defs : Definitions)
-    (h_env_respects : EnvRespectsCtx Γ V)
-  : TypeJdg Γ e ty → HeadSmallStep defs V e e' → TypeJdg Γ e' ty := by
-  intro h_jdg b
-  induction b
-  · cases h_jdg
-    · rename_i x n a relΓ
+theorem preservation (env : Env) (Γ : TypeContext) (e e' : Expr) (ty : LLType)
+    (h_env_respects : EnvRespectsCtx Γ env)
+  : Expr.TypeJdg Γ e ty → HeadSmallStep env e e' → Expr.TypeJdg Γ e' ty := by
+    intro h_jdg b
+    induction b
+    · -- const_step
+      cases h_jdg
+      apply Expr.TypeJdg.jdg_value
+      apply Value.TypeJdg.jdg_nat
+    · -- var_step
+      rename_i env n a relΓ
+      cases h_jdg
       unfold EnvRespectsCtx at h_env_respects
-      let ent_ctx_link := h_env_respects x n a
-      let symmRelΓ := relΓ.symm
-      have ty_eq := Option.some.inj (symmRelΓ.trans ent_ctx_link)
-      rw [ty_eq]
+      let ent_ctx_link := h_env_respects n a relΓ
       constructor
-  · cases h_jdg
-    · rename_i H₁ H₂
-      apply TypeJdg.jdg_const
-  · rename_i name val n
-    cases h_jdg
-    · rename_i H₁ H₂
+      rename_i relΓJd
+      rcases ent_ctx_link with ⟨ty', H_ty'_in_ctx, H_a_type_jdg⟩
+      rw [relΓJd] at H_ty'_in_ctx
+      rw [Option.some.inj H_ty'_in_ctx]
+      apply H_a_type_jdg
+    · -- case bin_op_step
+      cases h_jdg
+      rename_i H₁ H₂
       cases H₂
-      constructor
-  · cases h_jdg
-    rename_i f es' ps bd f_in_defs a eq_bd_defs es eq arg_types h_f h_args
-    simp [es]
-    apply addBindings_typing ctx_defs_respects f h_args f_in_defs eq_bd_defs
-
--- Progress: if TypeJdg Γ e ty, then e can take a step.
--- TODO: formalize
-
--- TODO: Also interesting:
--- if TypeJdg Γ e ty, then eval e succeeds
+      apply Expr.TypeJdg.jdg_value
+      apply Value.TypeJdg.jdg_nat
+    · -- case let_in_const_step
+      cases h_jdg
+      apply Expr.TypeJdg.jdg_value
+      rename_i H₁ H₂
+      cases H₂
+      exact
+      sorry
+    · -- case fun_step.jdg_fun
+      cases h_jdg
+      rename_i r env es ps bd H_len r_eq arg_types H_args f_jdg
+      rw [r_eq]
+      apply addBindings_typing Γ ps es bd ty H_len arg_types H_args f_jdg
