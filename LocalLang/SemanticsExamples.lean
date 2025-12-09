@@ -62,7 +62,8 @@ lemma f_steps
           simp only [Ctx.updateEnv]
           apply SmallStep.hole_step
           apply HeadSmallStep.var_step
-          simp
+          rw [Std.HashMap.getElem?_insert_self]
+          rfl
         SmallStep env _ 1 := by
           apply SmallStep.hole_step
           constructor
