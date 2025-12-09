@@ -60,6 +60,14 @@ lemma const_eq_fill_implies_hole {ctx : Ctx}
     · rfl
     · assumption
 
+lemma value_eq_fill_implies_hole {ctx : Ctx}
+  (eq : Expr.value v = ctx.fill e)
+  : (ctx = .hole ∧ Expr.value v = e) := by
+    cases ctx <;> simp only [Ctx.fill] at eq <;> try contradiction
+    constructor
+    · rfl
+    · assumption
+
 lemma no_headSmallStep_from_value
   : ¬HeadSmallStep V (.value x) e := nofun
 
