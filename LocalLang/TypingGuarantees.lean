@@ -10,6 +10,17 @@ def CtxRespectsEnv (V : Env) (Γ : TypeContext) : Prop :=
   ∀ (x : String) (ty : LLType), Γ[x]? = some ty
   → ∃ v, V[x]? = some v ∧ v.TypeJdg ty
 
+def TypeContext.subcontext (Γ₁ Γ₂ : TypeContext) : Prop :=
+  ∀ (name : String) (ty : LLType), Γ₁[name]? = some ty → Γ₂[name]? = some ty
+
+theorem Weakening {Γ₁ Γ₂ : TypeContext} {e : Expr} {ty : LLType}
+      (H_sub : Γ₁.subcontext Γ₂) (H_jdg : Expr.TypeJdg Γ₁ e ty)
+      : Expr.TypeJdg Γ₂ e ty := by
+      sorry
+
+theorem Empty_subcontext (Γ : TypeContext) : TypeContext.subcontext {} Γ
+    := by simp [TypeContext.subcontext]
+
 theorem addBindings_typing (Γ : TypeContext) (ps : List String) (es : List Expr)
                            (bd : Expr) (ty : LLType)
                            (H_len : ps.length = es.length) (arg_types : List LLType)
@@ -34,7 +45,7 @@ theorem addBindings_typing (Γ : TypeContext) (ps : List String) (es : List Expr
             cases h_value with
             | jdg_closure body_jdg' =>
               simp [h_ps_nil] at body_jdg'
-              sorry
+              apply Weakening (Empty_subcontext Γ) body_jdg'
   | cons head tail ih => sorry
 
 
