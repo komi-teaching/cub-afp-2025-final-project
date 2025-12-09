@@ -3,17 +3,17 @@ import LocalLang.AST
 inductive Ctx : Type where
   | hole : Ctx
   | binOpLhs : Ctx → BinOp → Expr → Ctx
-  | binOpRhs : ℕ → BinOp → Ctx → Ctx
+  | binOpRhs : Value → BinOp → Ctx → Ctx
   | letInExpr : String → Ctx → Expr → Ctx
-  | letInBody : String → ℕ → Ctx → Ctx
+  | letInBody : String → Value → Ctx → Ctx
   | funCallBody : Ctx → List Expr → Ctx
 
 @[reducible] def Ctx.fill (e : Expr) : Ctx → Expr
   | hole => e
   | binOpLhs ctx op e' => Expr.binOp op (ctx.fill e) e'
-  | binOpRhs n op ctx => Expr.binOp op (.value (.nat n)) (ctx.fill e)
+  | binOpRhs v op ctx => Expr.binOp op (.value v) (ctx.fill e)
   | letInExpr x ctx e' => .letIn x (ctx.fill e) e'
-  | letInBody x n ctx => .letIn x (.value (.nat n)) (ctx.fill e)
+  | letInBody x v ctx => .letIn x (.value v) (ctx.fill e)
   | funCallBody ctx es => .funCall (ctx.fill e) es
 
 @[reducible] def Ctx.updateEnv (env : Env) : Ctx → Env
@@ -21,7 +21,7 @@ inductive Ctx : Type where
   | binOpLhs ctx _ _ => ctx.updateEnv env
   | binOpRhs _ _ ctx => ctx.updateEnv env
   | letInExpr _ ctx _ => ctx.updateEnv env
-  | letInBody x n ctx => ctx.updateEnv (env.insert x (.nat n))
+  | letInBody x v ctx => ctx.updateEnv (env.insert x v)
   | funCallBody ctx _ => ctx.updateEnv env
 
 @[reducible] def Ctx.fillWithCtx (ctx : Ctx) (innerCtx : Ctx) : Ctx := match ctx with
