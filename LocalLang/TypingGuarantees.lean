@@ -69,8 +69,7 @@ theorem preservation (env : Env) (Γ : TypeContext) (e e' : Expr) (ty : LLType)
       apply Expr.TypeJdg.jdg_value
       rename_i H₁ H₂
       cases H₂
-      exact
-      sorry
+      assumption
     · -- case fun_step.jdg_fun
       cases h_jdg
       rename_i r env es ps bd H_len r_eq arg_types H_args f_jdg
