@@ -2,8 +2,6 @@ import LocalLang.AST
 import Std.Data.HashMap.Basic
 import Init.Data.Repr
 
-abbrev Vars := Std.HashMap String ℕ
-
 inductive Computation (α : Type) where
   | result (val : α) : Computation α
   | fail : Computation α
@@ -24,41 +22,42 @@ def BinOp.eval : BinOp → ℕ → ℕ → ℕ
   | add, x, y => x + y
   | mul, x, y => x * y
 
-def Function.bindArgs (func : Func) (args : List ℕ) (V : Vars) : Vars :=
-  let param_arg_list := List.zip func.parameters args
-  param_arg_list.foldl (fun acc (name, value) => acc.insert name value) V
+def Env.bindArgs (env : Env) (argNames : List String) (argValues : List Value) : Env :=
+  let param_arg_list := List.zip argNames argValues
+  param_arg_list.foldl (fun acc (name, value) => acc.insert name value) env
 
-def Expr.eval (gas : ℕ) (V : Vars) (D : Definitions) (e : Expr) : Computation ℕ :=
+def Expr.eval (gas : ℕ) (env : Env) (expr : Expr) : Computation Value :=
   match gas with
   | 0 => Computation.outOfGas
   | gas' + 1 =>
-    match e with
-    | const k =>
-        return k
-
+    match expr with
+    | value v => return v
+    | const k => return Value.nat k
     | var x =>
-        match V[x]? with
+        match env[x]? with
         | some v => return v
         | none   => Computation.fail
 
     | binOp op e₁ e₂ => do
-        let v₁ ← e₁.eval gas' V D
-        let v₂ ← e₂.eval gas' V D
-        return (op.eval v₁ v₂)
+        let v₁ ← e₁.eval gas' env
+        let v₂ ← e₂.eval gas' env
+        match v₁, v₂ with
+        | (Value.nat r₁), (Value.nat r₂) => return Value.nat (op.eval r₁ r₂)
+        | _, _ => Computation.fail
 
     | letIn varName init expr => do
-        let varValue ← init.eval gas' V D
-        let V' := V.insert varName varValue
-        expr.eval gas' V' D
+        let varValue ← init.eval gas' env
+        let env' := env.insert varName varValue
+        expr.eval gas' env'
 
     | funCall ef es => do
-        let args ← es.mapM (fun e => e.eval gas' V D)
-        match D[ef]? with
-        | none => Computation.fail
-        | some func =>
-            let V_with_args := Function.bindArgs func args V
-            -- Crucial: We call recursively with `gas'`, which is strictly smaller than `gas`.
-            func.body.eval gas' V_with_args D
+        let clos ← Expr.eval gas' env ef
+        match clos with
+        | Value.closure argNames functionBody => do
+          let args ← es.mapM (fun e => e.eval gas' env)
+          let envWithArgs := env.bindArgs argNames args
+          functionBody.eval gas' envWithArgs
+        | _ => Computation.fail
 
-def Program.evaluate (prog : Program) (fuel : ℕ) : Computation ℕ :=
-  prog.main.eval fuel Std.HashMap.emptyWithCapacity prog.definitions
+def Program.evaluate (prog : Program) (fuel : ℕ) : Computation Value :=
+  Expr.eval fuel prog.env prog.main
