@@ -1,14 +1,17 @@
 import Mathlib.Data.Nat.Notation
 import Std.Data.HashMap.Basic
+import Init.Data.Repr
 
 inductive BinOp where
   | add
   | mul
+deriving Repr
 
 mutual
 inductive Value where
   | nat (n : ℕ)
   | closure (ps : List String) (body : Expr)
+deriving Repr
 
 inductive Expr where
   | value (v : Value)
@@ -17,6 +20,7 @@ inductive Expr where
   | binOp (op : BinOp) (e₁ e₂ : Expr)
   | letIn (name : String) (e₁ e₂ : Expr)
   | funCall (e : Expr) (es : List Expr)
+deriving Repr
 end
 
 instance : OfNat Value n where
