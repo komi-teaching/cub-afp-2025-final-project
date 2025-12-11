@@ -5,7 +5,7 @@ import LocalLang.Types
 
 mutual
   inductive Value.TypeJdg : Value → LLType → Prop where
-    | jdg_nat : Value.TypeJdg (.nat n) .nat
+    | jdg_nat {n} : Value.TypeJdg (.nat n) .nat
     | jdg_closure {ps bd argTs retTy} : Expr.TypeJdg (.ofList (ps.zip argTs)) bd retTy
       → Value.TypeJdg (.closure ps bd) (.func argTs retTy)
 
@@ -17,7 +17,7 @@ mutual
     | jdg_fun {Γ : TypeContext} {es : List Expr} {arg_types : List LLType} {T_return : LLType}
                   (f_jdg : Expr.TypeJdg Γ f (.func arg_types T_return))
                   (H_args : Expr.TypeJdgList Γ es arg_types)
-                        : Expr.TypeJdg Γ (.funCall f es) (LLType.func arg_types T_return)
+                        : Expr.TypeJdg Γ (.funCall f es) T_return
     | jdg_binOp {Γ : TypeContext} {op : BinOp} {e₁ e₂ : Expr}
                 (H₁ : Expr.TypeJdg Γ e₁ LLType.nat) (H₂ : Expr.TypeJdg Γ e₂ LLType.nat)
                         : Expr.TypeJdg Γ (.binOp op e₁ e₂) .nat
