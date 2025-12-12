@@ -6,8 +6,8 @@ import LocalLang.Types
 mutual
   inductive Value.TypeJdg : Value → LLType → Prop where
     | jdg_nat : Value.TypeJdg (.nat n) .nat
-    | jdg_closure {ps bd argTs retTy} : Expr.TypeJdg (.ofList (ps.zip argTs)) bd retTy
-      → Value.TypeJdg (.closure ps bd) (.func argTs retTy)
+    | jdg_closure {ps bd argTs retTy} : Expr.TypeJdg (.ofList (ps.zip argTs)) bd retTy →
+      ps.length = argTs.length → Value.TypeJdg (.closure ps bd) (.func argTs retTy)
 
   inductive Expr.TypeJdg : TypeContext → Expr → LLType → Prop where
     | jdg_value {ty} : Value.TypeJdg v ty → Expr.TypeJdg Γ (.value v) ty
