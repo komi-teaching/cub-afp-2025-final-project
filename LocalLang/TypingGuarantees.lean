@@ -11,14 +11,14 @@ def CtxRespectsEnv (V : Env) (Γ : TypeContext) : Prop :=
   ∀ (x : String) (ty : LLType), Γ[x]? = some ty
   → ∃ v, V[x]? = some v ∧ v.TypeJdg ty
 
-theorem addBindings_typing (Γ : TypeContext) (ps : List String) (es : List Expr)
+theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr}
                            (bd : Expr) (ty : LLType)
                            (H_len : ps.length = es.length) (arg_types : List LLType)
   (H_args : Expr.TypeJdgList Γ es arg_types)
   (body_jdg : Expr.TypeJdg Γ (Expr.value (Value.closure ps bd)) (LLType.func arg_types ty))
   : Expr.TypeJdg Γ (Expr.addBindings ps es bd H_len) ty := by
   generalize qs_equality : (ps.zip es) = qs
-  induction qs with
+  induction qs generalizing ps es bd arg_types with
   | nil =>
           simp [Expr.addBindings]
           rw [qs_equality]
@@ -36,7 +36,45 @@ theorem addBindings_typing (Γ : TypeContext) (ps : List String) (es : List Expr
             | jdg_closure body_jdg' =>
               simp [h_ps_nil] at body_jdg'
               apply weakening_expr (Empty_subcontext Γ) body_jdg'
-  | cons head tail ih => sorry
+  | cons head tail ih =>
+    cases ps with
+    | nil => simp at qs_equality
+    | cons p ps' =>
+      cases es with
+      | nil => simp at qs_equality
+      | cons e es' =>
+          simp at qs_equality
+          have h_head : (p, e) = head := qs_equality.left
+          have h_tail : ps'.zip es' = tail := qs_equality.right
+          have H_len' : ps'.length = es'.length := by
+                  simpa [List.length] using H_len
+
+          unfold Expr.addBindings
+          simp [List.foldl_cons]
+          rw [← Expr.addBindings]
+          cases H_args with
+          | cons h_e_t h_es' =>
+            rename_i head_arg_type arg_types
+            cases body_jdg with
+            | jdg_value body_jdg' =>
+              cases body_jdg' with
+              | jdg_closure H_body_jdg H_len_all =>
+
+                apply ih
+                · exact h_es'
+                · apply Expr.TypeJdg.jdg_value
+                  apply Value.TypeJdg.jdg_closure
+                  · have h_zip : (p :: ps').zip (head_arg_type :: arg_types) = (p, head_arg_type) :: (ps'.zip arg_types) := rfl
+                    rw [h_zip] at H_body_jdg
+
+                    apply Expr.TypeJdg.jdg_let_in (ty₁ := head_arg_type)
+                    ·
+                      sorry
+                    · 
+                      sorry
+                  · simp [List.length] at H_len_all
+                    exact H_len_all
+                · exact h_tail
 
 theorem preservation (env : Env) (Γ : TypeContext) (e e' : Expr) (ty : LLType)
     (h_env_respects : EnvRespectsCtx Γ env)
@@ -74,4 +112,4 @@ theorem preservation (env : Env) (Γ : TypeContext) (e e' : Expr) (ty : LLType)
       cases h_jdg
       rename_i r env es ps bd H_len r_eq arg_types H_args f_jdg
       rw [r_eq]
-      apply addBindings_typing Γ ps es bd ty H_len arg_types H_args f_jdg
+      apply addBindings_typing Γ bd ty H_len arg_types H_args f_jdg
