@@ -64,13 +64,18 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
                 · exact h_es'
                 · apply Expr.TypeJdg.jdg_value
                   apply Value.TypeJdg.jdg_closure
-                  · have h_zip : (p :: ps').zip (head_arg_type :: arg_types) = (p, head_arg_type) :: (ps'.zip arg_types) := rfl
+                  · have h_zip : (p :: ps').zip (head_arg_type :: arg_types)
+                      = (p, head_arg_type) :: (ps'.zip arg_types) := rfl
                     rw [h_zip] at H_body_jdg
                     apply Expr.TypeJdg.jdg_let_in (ty₁ := head_arg_type)
-                    ·
+                    · apply weakening_expr _ h_e_t
                       sorry
                     ·
-                      sorry
+                      have h_map_eq
+                        : (Std.HashMap.ofList (ps'.zip arg_types)).insert p head_arg_type =
+                           Std.HashMap.ofList ((p, head_arg_type) :: ps'.zip arg_types) := by sorry
+                      rw [h_map_eq]
+                      exact H_body_jdg
                   · simp [List.length] at H_len_all
                     exact H_len_all
                 · exact h_tail
