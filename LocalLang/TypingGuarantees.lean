@@ -51,7 +51,8 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
 
           unfold Expr.addBindings
           simp [List.foldl_cons]
-          rw [← Expr.addBindings]
+
+          change Expr.TypeJdg Γ (Expr.addBindings ps' es' (Expr.letIn p e bd) H_len') ty
           cases H_args with
           | cons h_e_t h_es' =>
             rename_i head_arg_type arg_types
@@ -59,18 +60,16 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
             | jdg_value body_jdg' =>
               cases body_jdg' with
               | jdg_closure H_body_jdg H_len_all =>
-
                 apply ih
                 · exact h_es'
                 · apply Expr.TypeJdg.jdg_value
                   apply Value.TypeJdg.jdg_closure
                   · have h_zip : (p :: ps').zip (head_arg_type :: arg_types) = (p, head_arg_type) :: (ps'.zip arg_types) := rfl
                     rw [h_zip] at H_body_jdg
-
                     apply Expr.TypeJdg.jdg_let_in (ty₁ := head_arg_type)
                     ·
                       sorry
-                    · 
+                    ·
                       sorry
                   · simp [List.length] at H_len_all
                     exact H_len_all
