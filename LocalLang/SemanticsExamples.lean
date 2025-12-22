@@ -1,5 +1,6 @@
 import LocalLang.Semantics
 import LocalLang.SemanticsLemmas
+import LocalLang.SemanticsTactics
 import LocalLang.Ctx
 import Mathlib.Data.List.Sigma
 import Std.Data.HashMap.Basic
@@ -35,11 +36,11 @@ lemma f_steps
       simp only [Ctx.updateEnv]
       calc
         SmallStep env _ (.funCall (.value (.closure ["x"] "x")) ["x" + 1]) := by
-          apply SmallStep.ctx_step (.funCallBody .hole ["x" + 1]) rfl rfl ?_
-          · apply HeadSmallStep.var_step
-            simp [env, Std.HashMap.getElem_insert]
+          step_auto_context
+          apply HeadSmallStep.var_step
+          simp [env, Std.HashMap.getElem_insert]
         SmallStep env _ (.letIn "x" ("x" + 1) "x") := by
-          apply SmallStep.hole_step
+          step_auto_context
           apply (HeadSmallStep.fun_step ?_ rfl)
           try rw [defs_g]
           simp
@@ -48,33 +49,23 @@ lemma f_steps
           simp only [Ctx.updateEnv]
           calc
             SmallStep env _ (0 + 1) := by
-              apply (SmallStep.ctx_step (.binOpLhs .hole .add 1) rfl rfl)
+              step_auto_context
               apply HeadSmallStep.var_step
               simp [Ctx.updateEnv, env]
               rfl
             SmallStep env _ _ := by
-              apply SmallStep.hole_step
+              step_auto_context
               apply HeadSmallStep.bin_op_step
               constructor
         SmallStep env _ (.letIn "x" 1 1) := by
-          apply SmallStep.with_ctx (.letInBody "x" 1 .hole) (by simp; rfl) (by simp; rfl)
-            (?_ : SmallStep _ "x" 1)
-          simp only [Ctx.updateEnv]
-          apply SmallStep.hole_step
-          apply HeadSmallStep.var_step
-          rw [Std.HashMap.getElem?_insert_self]
-          rfl
+          step_auto_context
         SmallStep env _ 1 := by
-          apply SmallStep.hole_step
+          step_auto_context
           constructor
     SmallStep env _ (1 + 0) := by
-      apply (SmallStep.ctx_step (.binOpRhs 1 .add .hole) rfl rfl)
-      simp only [Ctx.updateEnv]
-      constructor
-      simp [env]
-      rfl
+      step_auto_context
     SmallStep env _ _ := by
-      apply SmallStep.hole_step
+      step_auto_context
       constructor
       rfl
 
