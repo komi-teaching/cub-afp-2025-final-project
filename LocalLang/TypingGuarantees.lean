@@ -4,12 +4,20 @@ import LocalLang.Types
 import LocalLang.Typing
 import LocalLang.Weakening
 
-def TypeContextRespectsEnv (Γ : TypeContext) (V : Env) : Prop :=
+namespace TypeContext
+
+def respects_env (Γ : TypeContext) (V : Env) : Prop :=
   ∀ (x : String) (v : Value), V[x]? = v → ∃ ty, Γ[x]? = some ty ∧ v.TypeJdg ty
 
-def EnvRespectsTypeCotext (V : Env) (Γ : TypeContext) : Prop :=
+end TypeContext
+
+namespace Env
+
+def respects_type_context (V : Env) (Γ : TypeContext) : Prop :=
   ∀ (x : String) (ty : LLType), Γ[x]? = some ty
   → ∃ v, V[x]? = some v ∧ v.TypeJdg ty
+
+end Env
 
 theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr}
                            (bd : Expr) (ty : LLType)
@@ -20,9 +28,7 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
   generalize qs_equality : (ps.zip es) = qs
   induction qs generalizing ps es bd arg_types with
   | nil =>
-          simp [Expr.addBindings]
-          rw [qs_equality]
-          simp
+          rw [Expr.addBindings, qs_equality]
           rw [List.zip_eq_nil_iff] at qs_equality
           have h_ps_nil : ps = [] := by
            cases qs_equality with
@@ -34,7 +40,7 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
           | jdg_value h_value =>
             cases h_value with
             | jdg_closure body_jdg' =>
-              simp [h_ps_nil] at body_jdg'
+              rw [h_ps_nil] at body_jdg'
               apply weakening_expr (empty_subcontext Γ) body_jdg'
   | cons head tail ih =>
     cases ps with
@@ -43,7 +49,7 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
       cases es with
       | nil => simp at qs_equality
       | cons e es' =>
-          simp at qs_equality
+          rw [List.zip_cons_cons, List.cons.injEq] at qs_equality
           have h_head : (p, e) = head := qs_equality.left
           have h_tail : ps'.zip es' = tail := qs_equality.right
           have H_len' : ps'.length = es'.length := by
@@ -76,7 +82,7 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
                 · exact h_tail
 
 theorem preservation (env : Env) (Γ : TypeContext) (e e' : Expr) (ty : LLType)
-    (h_env_respects : TypeContextRespectsEnv Γ env)
+    (h_env_respects : Γ.respects_env env)
   : Expr.TypeJdg Γ e ty → HeadSmallStep env e e' → Expr.TypeJdg Γ e' ty := by
     intro h_jdg b
     induction b
@@ -87,7 +93,7 @@ theorem preservation (env : Env) (Γ : TypeContext) (e e' : Expr) (ty : LLType)
     · -- var_step
       rename_i env n a relΓ
       cases h_jdg
-      unfold TypeContextRespectsEnv at h_env_respects
+      unfold TypeContext.respects_env at h_env_respects
       let ent_ctx_link := h_env_respects n a relΓ
       constructor
       rename_i relΓJd
