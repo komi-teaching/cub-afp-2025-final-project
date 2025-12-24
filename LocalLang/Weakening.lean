@@ -16,7 +16,7 @@ theorem subcontext_insert {Γ₁ Γ₂ : TypeContext} {name : String} {ty : LLTy
     simp [TypeContext.subcontext] at h
     split <;> simp_all
 
-theorem Empty_subcontext (Γ : TypeContext) : TypeContext.subcontext {} Γ
+theorem empty_subcontext (Γ : TypeContext) : TypeContext.subcontext {} Γ
     := by simp [TypeContext.subcontext]
 
 mutual

@@ -4,10 +4,10 @@ import LocalLang.Types
 import LocalLang.Typing
 import LocalLang.Weakening
 
-def EnvRespectsCtx (Γ : TypeContext) (V : Env) : Prop :=
+def TypeContextRespectsEnv (Γ : TypeContext) (V : Env) : Prop :=
   ∀ (x : String) (v : Value), V[x]? = v → ∃ ty, Γ[x]? = some ty ∧ v.TypeJdg ty
 
-def CtxRespectsEnv (V : Env) (Γ : TypeContext) : Prop :=
+def EnvRespectsTypeCotext (V : Env) (Γ : TypeContext) : Prop :=
   ∀ (x : String) (ty : LLType), Γ[x]? = some ty
   → ∃ v, V[x]? = some v ∧ v.TypeJdg ty
 
@@ -35,7 +35,7 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
             cases h_value with
             | jdg_closure body_jdg' =>
               simp [h_ps_nil] at body_jdg'
-              apply weakening_expr (Empty_subcontext Γ) body_jdg'
+              apply weakening_expr (empty_subcontext Γ) body_jdg'
   | cons head tail ih =>
     cases ps with
     | nil => simp at qs_equality
@@ -70,18 +70,13 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
                     apply Expr.TypeJdg.jdg_let_in (ty₁ := head_arg_type)
                     · apply weakening_expr _ h_e_t
                       sorry
-                    ·
-                      have h_map_eq
-                        : (Std.HashMap.ofList (ps'.zip arg_types)).insert p head_arg_type =
-                           Std.HashMap.ofList ((p, head_arg_type) :: ps'.zip arg_types) := by sorry
-                      rw [h_map_eq]
-                      exact H_body_jdg
+                    · sorry
                   · simp [List.length] at H_len_all
                     exact H_len_all
                 · exact h_tail
 
 theorem preservation (env : Env) (Γ : TypeContext) (e e' : Expr) (ty : LLType)
-    (h_env_respects : EnvRespectsCtx Γ env)
+    (h_env_respects : TypeContextRespectsEnv Γ env)
   : Expr.TypeJdg Γ e ty → HeadSmallStep env e e' → Expr.TypeJdg Γ e' ty := by
     intro h_jdg b
     induction b
@@ -92,7 +87,7 @@ theorem preservation (env : Env) (Γ : TypeContext) (e e' : Expr) (ty : LLType)
     · -- var_step
       rename_i env n a relΓ
       cases h_jdg
-      unfold EnvRespectsCtx at h_env_respects
+      unfold TypeContextRespectsEnv at h_env_respects
       let ent_ctx_link := h_env_respects n a relΓ
       constructor
       rename_i relΓJd
