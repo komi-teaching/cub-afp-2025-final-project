@@ -17,7 +17,7 @@ mutual
     | jdg_fun {Γ : TypeContext} {es : List Expr} {arg_types : List LLType} {T_return : LLType}
                   (f_jdg : Expr.TypeJdg Γ f (.func arg_types T_return))
                   (H_args : Expr.TypeJdgList Γ es arg_types)
-                        : Expr.TypeJdg Γ (.funCall f es) (LLType.func arg_types T_return)
+                        : Expr.TypeJdg Γ (.funCall f es) T_return
     | jdg_binOp {Γ : TypeContext} {op : BinOp} {e₁ e₂ : Expr}
                 (H₁ : Expr.TypeJdg Γ e₁ LLType.nat) (H₂ : Expr.TypeJdg Γ e₂ LLType.nat)
                         : Expr.TypeJdg Γ (.binOp op e₁ e₂) .nat
