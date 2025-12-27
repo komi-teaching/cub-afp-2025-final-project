@@ -25,60 +25,70 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
   (H_args : Expr.TypeJdgList Γ es arg_types)
   (body_jdg : Expr.TypeJdg Γ (Expr.value (Value.closure ps bd)) (LLType.func arg_types ty))
   : Expr.TypeJdg Γ (Expr.addBindings ps es bd H_len) ty := by
-  generalize qs_equality : (ps.zip es) = qs
-  induction qs generalizing ps es bd arg_types with
-  | nil =>
-          rw [Expr.addBindings, qs_equality]
-          rw [List.zip_eq_nil_iff] at qs_equality
-          have h_ps_nil : ps = [] := by
-           cases qs_equality with
-           | inl h => apply h
-           | inr h =>
-             rw [h] at H_len
-             exact List.eq_nil_of_length_eq_zero H_len
-          cases body_jdg with
-          | jdg_value h_value =>
-            cases h_value with
-            | jdg_closure body_jdg' =>
-              rw [h_ps_nil] at body_jdg'
-              apply weakening_expr (empty_subcontext Γ) body_jdg'
-  | cons head tail ih =>
-    cases ps with
-    | nil => simp at qs_equality
-    | cons p ps' =>
-      cases es with
-      | nil => simp at qs_equality
-      | cons e es' =>
-          rw [List.zip_cons_cons, List.cons.injEq] at qs_equality
-          have h_head : (p, e) = head := qs_equality.left
-          have h_tail : ps'.zip es' = tail := qs_equality.right
-          have H_len' : ps'.length = es'.length := by
+
+  cases body_jdg with
+  | jdg_value h_val =>
+    cases h_val with
+    | jdg_closure h_body_raw h_len_eq =>
+      have h_body_gen : Expr.TypeJdg (TypeContext.union Γ (Std.HashMap.ofList (ps.zip arg_types))) bd ty := by
+         apply weakening_expr
+         · apply TypeContext.subset_union_right
+         · exact h_body_raw
+      clear h_body_raw
+
+      generalize qs_eq : (ps.zip es) = qs
+
+      induction qs generalizing ps es bd arg_types with
+      | nil =>
+        unfold Expr.addBindings
+        rw [qs_eq]
+        rw [List.zip_eq_nil_iff] at qs_eq
+        cases qs_eq with
+        | inl h_ps_nil =>
+           rw [h_ps_nil] at h_body_gen
+           simp at h_body_gen
+           simp
+           rw [TypeContext.union_empty] at h_body_gen
+           exact h_body_gen
+        | inr h =>
+           rw [h] at H_len
+           have := List.eq_nil_of_length_eq_zero H_len
+           subst ps
+           simp at h_body_gen
+           simp
+           rw [TypeContext.union_empty] at h_body_gen
+           exact h_body_gen
+
+      | cons head tail ih =>
+        cases ps with
+        | nil => simp at qs_eq
+        | cons p ps' =>
+          cases es with
+          | nil => simp at qs_eq
+          | cons e es' =>
+             rw [List.zip_cons_cons, List.cons.injEq] at qs_eq
+             have h_head : (p, e) = head := qs_eq.left
+             have h_tail : ps'.zip es' = tail := qs_eq.right
+
+             cases H_args with
+             | cons h_e_typed h_es_typed =>
+                rename_i head_arg_type tail_arg_types
+                unfold Expr.addBindings
+                rw [List.zip_cons_cons, List.foldl_cons]
+                have H_len' : ps'.length = es'.length := by
                   simpa [List.length] using H_len
 
-          unfold Expr.addBindings
-          simp [List.foldl_cons]
-
-          change Expr.TypeJdg Γ (Expr.addBindings ps' es' (Expr.letIn p e bd) H_len') ty
-          cases H_args with
-          | cons h_e_t h_es' =>
-            rename_i head_arg_type arg_types
-            cases body_jdg with
-            | jdg_value body_jdg' =>
-              cases body_jdg' with
-              | jdg_closure H_body_jdg H_len_all =>
-                apply ih
-                · exact h_es'
-                · apply Expr.TypeJdg.jdg_value
-                  apply Value.TypeJdg.jdg_closure
-                  · have h_zip : (p :: ps').zip (head_arg_type :: arg_types)
-                      = (p, head_arg_type) :: (ps'.zip arg_types) := rfl
-                    rw [h_zip] at H_body_jdg
-                    apply Expr.TypeJdg.jdg_let_in (ty₁ := head_arg_type)
-                    · apply weakening_expr _ h_e_t
+                apply ih (ps := ps') (es := es') (bd := Expr.letIn p e bd)
+                         (H_len := H_len') (arg_types := tail_arg_types)
+                · exact h_es_typed
+                · simpa [List.length] using h_len_eq
+                · apply Expr.TypeJdg.jdg_let_in (ty₁ := head_arg_type)
+                  · apply weakening_expr
+                    · apply TypeContext.subset_union_left
                       sorry
-                    · sorry
-                  · simp [List.length] at H_len_all
-                    exact H_len_all
+                    · exact h_e_typed
+                  · rw [List.zip_cons_cons, TypeContext.union_cons] at h_body_gen
+                    exact h_body_gen
                 · exact h_tail
 
 theorem preservation (env : Env) (Γ : TypeContext) (e e' : Expr) (ty : LLType)

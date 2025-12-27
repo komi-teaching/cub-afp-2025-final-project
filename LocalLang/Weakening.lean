@@ -3,7 +3,9 @@ import LocalLang.Semantics
 import LocalLang.Types
 import LocalLang.Typing
 
-def TypeContext.subcontext (Γ₁ Γ₂ : TypeContext) : Prop :=
+namespace TypeContext
+
+def subcontext (Γ₁ Γ₂ : TypeContext) : Prop :=
   ∀ (name : String) (ty : LLType), Γ₁[name]? = some ty → Γ₂[name]? = some ty
 
 theorem subcontext_insert {Γ₁ Γ₂ : TypeContext} {name : String} {ty : LLType}
@@ -19,13 +21,50 @@ theorem subcontext_insert {Γ₁ Γ₂ : TypeContext} {name : String} {ty : LLTy
 theorem empty_subcontext (Γ : TypeContext) : TypeContext.subcontext {} Γ
     := by simp [TypeContext.subcontext]
 
+def union (outer inner : TypeContext) : TypeContext :=
+  inner.fold (fun acc key val => acc.insert key val) outer
+
+theorem union_empty (Γ : TypeContext) : Γ.union {} = Γ := by
+  simp [union, Std.HashMap.fold, Std.HashMap.insert]
+  sorry
+
+def Disjoint (Γ₁ Γ₂ : TypeContext) : Prop :=
+  ∀ x, Γ₁.contains x → ¬Γ₂.contains x
+
+theorem union_cons (Γ : TypeContext) (k : String) (v : LLType) (tail : List (String × LLType)) :
+  TypeContext.union Γ (Std.HashMap.ofList ((k, v) :: tail)) =
+  (TypeContext.union Γ (Std.HashMap.ofList tail)).insert k v := by
+  sorry
+
+theorem subset_union_right (ctx1 ctx2 : TypeContext) : subcontext ctx2 (union ctx1 ctx2) := by
+    intro x ty h_get
+    rw [union]
+    sorry
+
+theorem subset_union_left {ctx1 ctx2 : TypeContext} (h_disj : Disjoint ctx1 ctx2) : subcontext ctx1 (union ctx1 ctx2) := by
+  intro x ty h_get
+  rw [TypeContext.union]
+
+  have h_none_ctx2 : ctx2[x]? = none := by
+    unfold Disjoint at h_disj
+    specialize h_disj x
+    simp [h_get] at h_disj
+    sorry
+
+  rw [← h_get]
+
+  sorry
+
+end TypeContext
+
 mutual
   theorem weakening_expr {Γ₁ Γ₂ : TypeContext} {e : Expr} {ty : LLType}
         (H_sub : TypeContext.subcontext Γ₁ Γ₂)
         (H_jdg : Expr.TypeJdg Γ₁ e ty)
         : Expr.TypeJdg Γ₂ e ty := by
     match H_jdg with
-    | .jdg_value h_val => exact Expr.TypeJdg.jdg_value h_val
+    | .jdg_value h_val => apply Expr.TypeJdg.jdg_value
+                          exact h_val
     | .jdg_var h_lookup => apply Expr.TypeJdg.jdg_var
                            rename_i name
                            exact H_sub name ty h_lookup
@@ -38,7 +77,7 @@ mutual
                           · exact weakening_expr H_sub H₂
     | .jdg_let_in H₁ H₂ => apply Expr.TypeJdg.jdg_let_in
                            · exact weakening_expr H_sub H₁
-                           · apply weakening_expr (subcontext_insert H_sub) H₂
+                           · apply weakening_expr (TypeContext.subcontext_insert H_sub) H₂
 
 theorem weakening_list {Γ₁ Γ₂ : TypeContext} {es : List Expr} {tys : List LLType}
         (H_sub : TypeContext.subcontext Γ₁ Γ₂)
