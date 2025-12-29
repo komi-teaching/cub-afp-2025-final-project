@@ -1,7 +1,7 @@
-import LocalLang.Semantics
 import LocalLang.SemanticsLemmas
 import Lean
 import Lean.PrettyPrinter
+import LocalLang.Semantics
 
 open Lean Meta Elab Tactic
 
@@ -10,6 +10,19 @@ open Lean Meta Elab Tactic
 -/
 def isValueForTactic (e : Lean.Expr) : Bool :=
   e.isAppOf ``Expr.value || e.isAppOf ``OfNat.ofNat
+
+def getValueSyntax (e : Lean.Expr) : MetaM (TSyntax `term) := do
+  if e.isAppOf ``OfNat.ofNat then
+    -- Case: OfNat.ofNat Expr n inst
+    let args := e.getAppArgs
+    let n := args[1]!
+    let nStx : TSyntax `term := ⟨← PrettyPrinter.delab n⟩
+    `(Value.nat $nStx)
+  else
+    -- Case: Expr.value v
+    let v := e.appArg!
+    let vStx : TSyntax `term := ⟨← PrettyPrinter.delab v⟩
+    return vStx
 
 /-
   Traverse `e` to find the next reduction step
@@ -45,9 +58,7 @@ partial def findStepCtx (e : Lean.Expr) : MetaM (Option (TSyntax `term)) := do
       if !isValueForTactic e2 then
         match ← findStepCtx e2 with
         | some inner =>
-          let v := e1.appArg!
-          let vStx : TSyntax `term := ⟨← PrettyPrinter.delab v⟩
-
+          let vStx ← getValueSyntax e1
           if fn = ``HAdd.hAdd then
              return some (← `(Ctx.binOpRhs $vStx BinOp.add $inner))
           else
@@ -76,8 +87,7 @@ partial def findStepCtx (e : Lean.Expr) : MetaM (Option (TSyntax `term)) := do
         match ← findStepCtx e2 with
         | some inner =>
           let nameStx ← PrettyPrinter.delab name
-          let v := e1.appArg!
-          let vStx ← PrettyPrinter.delab v
+          let vStx ← getValueSyntax e1
           return some (← `(Ctx.letInBody $nameStx $vStx $inner))
         | none => return none
       else
