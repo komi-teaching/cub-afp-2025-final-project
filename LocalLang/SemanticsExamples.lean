@@ -9,6 +9,9 @@ import Std.Data.HashMap.Lemmas
 instance : Add Expr where
   add := .binOp .add
 
+instance : Mul Expr where
+  mul := .binOp .mul
+
 instance : Coe String Expr where
   coe := .var
 
@@ -74,8 +77,7 @@ lemma f_steps
       rfl
     SmallStep env _ _ := by
       step_auto_context
-      constructor
-      rfl
+      solve_head
 
 example : SmallSteps defs (.funCall "f" [0]) 1 := by
   calc
@@ -93,5 +95,65 @@ example : SmallSteps defs (.funCall "f" [0]) 1 := by
       apply (SmallSteps.with_ctx (.letInBody "x" 0 .hole) rfl rfl)
       exact f_steps
     SmallStep defs _ _ := by
-      apply SmallStep.hole_step
-      constructor
+      step_auto_context
+      solve_head
+
+example : SmallSteps defs (.funCall "g" [1]) 1 := by
+  calc
+    SmallStep defs _ (.funCall (.value (.closure ["x"] "x")) [1]) := by
+      step_auto_context
+      solve_head
+    SmallStep defs _ (.letIn "x" 1 "x") := by
+      step_auto_context
+      solve_head
+    SmallStep defs _ (.letIn "x" 1 1) := by
+      step_auto_context
+      solve_head
+    SmallStep defs _ 1 := by
+      step_auto_context
+      solve_head
+
+example : SmallSteps ∅ (1 + (1 + 1)) 3 := by
+  calc
+    SmallStep ∅ _ (1 + 2) := by
+      step_auto_context
+      solve_head
+    SmallStep ∅ _ _ := by
+      step_auto_context
+      solve_head
+
+example : SmallSteps ∅ (2 * (1 + 1)) 4 := by
+  calc
+    SmallStep ∅ _ (2 * 2) := by
+      step_auto_context
+      solve_head
+    SmallStep ∅ _ _ := by
+      step_auto_context
+      solve_head
+
+example : SmallSteps ∅ (.letIn "x" 1 "x") 1 := by
+  calc
+    SmallStep ∅ _ (.letIn "x" 1 1) := by
+      step_auto_context
+      solve_head
+    SmallStep ∅ _ 1 := by
+      step_auto_context
+      solve_head
+
+example : SmallSteps ∅ (.letIn "x" (2 + 2) ("x" * "x")) 16 := by
+  calc
+    SmallStep ∅ _ (.letIn "x" 4 ("x" * "x")) := by
+      step_auto_context
+      solve_head
+    SmallStep ∅ _ (.letIn "x" 4 (4 * "x")) := by
+      step_auto_context
+      solve_head
+    SmallStep ∅ _ (.letIn "x" 4 (4 * 4)) := by
+      step_auto_context
+      solve_head
+    SmallStep ∅ _ (.letIn "x" 4 16) := by
+      step_auto_context
+      solve_head
+    SmallStep ∅ _ 16 := by
+      step_auto_context
+      solve_head

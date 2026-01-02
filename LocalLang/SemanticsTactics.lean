@@ -33,7 +33,7 @@ partial def findStepCtx (e : Lean.Expr) : MetaM (Option (TSyntax `term)) := do
   -- logInfo m!"[findStepCtx] Visiting: {fn}"
 
   -- 1. BINARY OPERATOR (HAdd -- sugared +); TODO: Add HMul?
-  if fn = ``Expr.binOp || fn = ``HAdd.hAdd then
+  if fn = ``Expr.binOp || fn = ``HAdd.hAdd || fn = ``HMul.hMul then
     -- binOp (op : BinOp) (e₁ e₂ : Expr)
     let (op, e1, e2) :=
       if fn = ``Expr.binOp then
@@ -41,7 +41,10 @@ partial def findStepCtx (e : Lean.Expr) : MetaM (Option (TSyntax `term)) := do
       else
         let e1_raw := args[args.size - 2]!
         let e2_raw := args[args.size - 1]!
-        (mkConst ``BinOp.add, e1_raw, e2_raw)
+        if fn = ``HAdd.hAdd then
+          (mkConst ``BinOp.add, e1_raw, e2_raw)
+        else
+          (mkConst ``BinOp.mul, e1_raw, e2_raw)
 
     if !isValueForTactic e1 then
       match ← findStepCtx e1 with
@@ -50,6 +53,8 @@ partial def findStepCtx (e : Lean.Expr) : MetaM (Option (TSyntax `term)) := do
 
         if fn = ``HAdd.hAdd then -- need to put op manually
            return some (← `(Ctx.binOpLhs $inner BinOp.add $e2Stx))
+        else if fn = ``HMul.hMul then -- same for mul
+            return some (<- `(Ctx.binOpLhs $inner BinOp.mul $e2Stx))
         else
            let opStx : TSyntax `term := ⟨← PrettyPrinter.delab op⟩
            return some (← `(Ctx.binOpLhs $inner $opStx $e2Stx))
@@ -61,6 +66,8 @@ partial def findStepCtx (e : Lean.Expr) : MetaM (Option (TSyntax `term)) := do
           let vStx ← getValueSyntax e1
           if fn = ``HAdd.hAdd then
              return some (← `(Ctx.binOpRhs $vStx BinOp.add $inner))
+          else if fn = ``HMul.hMul then
+              return some (<- `(Ctx.binOpRhs $vStx BinOp.mul $inner))
           else
              let opStx : TSyntax `term := ⟨← PrettyPrinter.delab op⟩
              return some (← `(Ctx.binOpRhs $vStx $opStx $inner))
@@ -143,3 +150,36 @@ elab "step_auto_context" : tactic => do
       evalTactic (← `(tactic| apply SmallStep.ctx_step $ctxStx rfl rfl ?_))
     | none =>
       throwError "Could not find a reduction step for: {e1}"
+
+/--
+  Tactic to solve the `HeadSmallStep` goal automatically.
+  It tries every constructor of `HeadSmallStep` and uses `simp` to handle
+  environment lookups and arithmetic.
+-/
+syntax "solve_head" : tactic
+
+macro_rules
+| `(tactic| solve_head) => `(tactic|
+    first
+    -- 1. Constants (e.g. `1`)
+    | apply HeadSmallStep.const_step
+
+    -- 2. Variables (e.g. `x`)
+    -- We use `simp` with `*` to use local definitions (like `let env := ...`)
+    -- and the HashMap lemmas to find the value in the environment.
+    | apply HeadSmallStep.var_step
+      simp [Ctx.updateEnv, Std.HashMap.getElem_insert, *]
+
+    -- 3. Binary Operations (e.g. `1 + 2`)
+    -- `rfl` handles the arithmetic (e.g. 1+2 = 3).
+    | apply HeadSmallStep.bin_op_step
+      rfl
+
+    -- 4. Let bindings (e.g. `let x = v in ...`)
+    | apply HeadSmallStep.let_in_const_step
+
+    -- 5. Function calls (e.g. `(fun x => ...)(v)`)
+    -- We try to prove length equality and substitution with `rfl` or `simp`.
+    | apply HeadSmallStep.fun_step rfl rfl
+      try simp [*]
+  )
