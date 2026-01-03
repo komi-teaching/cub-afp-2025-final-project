@@ -151,7 +151,29 @@ elab "step_auto_context" : tactic => do
     | none =>
       throwError "Could not find a reduction step for: {e1}"
 
-/--
+--def unbox_name(boxed : Lean.Expr) : String :=
+
+
+/-
+  Try to solve "defs[<NAME>] = ..." goal for function definitions
+-/
+elab "solve_fun_def" : tactic => do
+  withMainContext do
+    let target <- getMainTarget
+
+    let (_, args) := target.getAppFnArgs
+    let name_boxed_opt: Option Lean.Expr := args[1]?
+    match name_boxed_opt with
+      | some (Lean.Expr.app innerApp _) =>
+        match innerApp with
+          | Lean.Expr.app _ name =>
+            --logInfo m!"[Inner] Found name: {name}"
+            let nameStx ← PrettyPrinter.delab name
+            evalTactic (←
+              `(tactic| apply (Std.HashMap.getElem_ofList_of_mem (k := $nameStx)) <;> simp))
+          | _ => throwError "Found app, but something is wrong"
+      | _ => throwError "Can't find fun def usage part"
+/-
   Try to solve `HeadSmallStep` goal:
   Attempts every constructor of `HeadSmallStep` and simplifies the results
 -/
@@ -178,3 +200,14 @@ macro_rules
     | apply HeadSmallStep.fun_step rfl rfl
       try simp [*]
   )
+
+syntax "machine_step" : tactic
+
+macro_rules
+| `(tactic| machine_step) => `(tactic|
+    first
+    | step_auto_context
+      solve_head
+      try rfl
+      try solve_fun_def -- probably should put this only on functions
+)
