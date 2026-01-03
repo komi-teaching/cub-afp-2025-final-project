@@ -24,11 +24,6 @@ abbrev g : Value := .closure ["x"] "x"
 
 abbrev defs := Std.HashMap.ofList [("f", f), ("g", g)]
 
---@[simp] lemma defs_f : defs["f"] = f := by
---  apply (Std.HashMap.getElem_ofList_of_mem (k := "f")) <;> simp
---@[simp] lemma defs_g : defs["g"] = g := by
---  apply (Std.HashMap.getElem_ofList_of_mem (k := "g")) <;> simp
-
 
 example : SmallSteps defs (.funCall "f" [0]) 1 := by
   calc
