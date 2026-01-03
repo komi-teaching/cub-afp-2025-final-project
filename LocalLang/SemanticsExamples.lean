@@ -24,10 +24,10 @@ abbrev g : Value := .closure ["x"] "x"
 
 abbrev defs := Std.HashMap.ofList [("f", f), ("g", g)]
 
-@[simp] lemma defs_f : defs["f"] = f := by
-  apply (Std.HashMap.getElem_ofList_of_mem (k := "f")) <;> simp
-@[simp] lemma defs_g : defs["g"] = g := by
-  apply (Std.HashMap.getElem_ofList_of_mem (k := "g")) <;> simp
+--@[simp] lemma defs_f : defs["f"] = f := by
+--  apply (Std.HashMap.getElem_ofList_of_mem (k := "f")) <;> simp
+--@[simp] lemma defs_g : defs["g"] = g := by
+--  apply (Std.HashMap.getElem_ofList_of_mem (k := "g")) <;> simp
 
 
 example : SmallSteps defs (.funCall "f" [0]) 1 := by
@@ -35,12 +35,14 @@ example : SmallSteps defs (.funCall "f" [0]) 1 := by
     SmallStep defs _ (.funCall (.value (.closure ["x"] ((.funCall "g" [ "x" + 1 ]) + "x"))) [0]) := by
       step_auto_context
       solve_head
+      apply (Std.HashMap.getElem_ofList_of_mem (k := "f")) <;> simp
     SmallStep defs _ (.letIn "x" 0 ((.funCall "g" [ "x" + 1 ]) + "x")) := by
       step_auto_context
       solve_head
     SmallStep defs _ (.letIn "x" 0 ((.funCall (.value (.closure ["x"] "x")) [ "x" + 1 ]) + "x")) := by
       step_auto_context
       solve_head
+      apply (Std.HashMap.getElem_ofList_of_mem (k := "g")) <;> simp
     SmallStep defs _ (.letIn "x" 0 ((.letIn "x" ("x" + 1) "x") + "x")) := by
       step_auto_context
       solve_head
@@ -87,6 +89,7 @@ example : SmallSteps defs (.funCall "g" [1]) 1 := by
     SmallStep defs _ (.funCall (.value (.closure ["x"] "x")) [1]) := by
       step_auto_context
       solve_head
+      apply (Std.HashMap.getElem_ofList_of_mem (k := "g")) <;> simp
     SmallStep defs _ (.letIn "x" 1 "x") := by
       step_auto_context
       solve_head
