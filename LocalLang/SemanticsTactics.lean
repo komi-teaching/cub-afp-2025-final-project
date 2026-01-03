@@ -152,34 +152,29 @@ elab "step_auto_context" : tactic => do
       throwError "Could not find a reduction step for: {e1}"
 
 /--
-  Tactic to solve the `HeadSmallStep` goal automatically.
-  It tries every constructor of `HeadSmallStep` and uses `simp` to handle
-  environment lookups and arithmetic.
+  Try to solve `HeadSmallStep` goal:
+  Attempts every constructor of `HeadSmallStep` and simplifies the results
 -/
 syntax "solve_head" : tactic
 
 macro_rules
 | `(tactic| solve_head) => `(tactic|
     first
-    -- 1. Constants (e.g. `1`)
+    -- 1. Constants
     | apply HeadSmallStep.const_step
 
-    -- 2. Variables (e.g. `x`)
-    -- We use `simp` with `*` to use local definitions (like `let env := ...`)
-    -- and the HashMap lemmas to find the value in the environment.
+    -- 2. Variables
     | apply HeadSmallStep.var_step
       simp [Ctx.updateEnv, Std.HashMap.getElem_insert, *]
 
-    -- 3. Binary Operations (e.g. `1 + 2`)
-    -- `rfl` handles the arithmetic (e.g. 1+2 = 3).
+    -- 3. Binary Operations
     | apply HeadSmallStep.bin_op_step
       rfl
 
-    -- 4. Let bindings (e.g. `let x = v in ...`)
+    -- 4. Let bindings
     | apply HeadSmallStep.let_in_const_step
 
-    -- 5. Function calls (e.g. `(fun x => ...)(v)`)
-    -- We try to prove length equality and substitution with `rfl` or `simp`.
+    -- 5. Function calls
     | apply HeadSmallStep.fun_step rfl rfl
       try simp [*]
   )
