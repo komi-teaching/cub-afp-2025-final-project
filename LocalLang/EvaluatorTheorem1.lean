@@ -94,24 +94,9 @@ and the evaluator (which updates Env).
 theorem eval_addBindings_eq_funCall {V : Env} {ps : List String} {es : List Expr} {bd : Expr}
   {h_len : ps.length = es.length} {gas : ℕ} {v : Value}
   (h : Expr.eval gas V ((Expr.value (Value.closure ps bd)).funCall es) = Computation.result v)
-  : ∃ gas', Expr.eval gas' V (Expr.addBindings ps es bd h_len) = Computation.result v := by
-  induction ps generalizing es bd V gas v
-  case nil =>
-    sorry
-
-  case cons p ps' ih =>
-    cases es
-    case nil => contradiction
-    case cons e es' =>
-      -- Split gas once. funCall needs 1 step. let needs 1 step.
-      cases gas
-      case zero =>
-        -- If gas is 0, funCall fails immediately. Contradiction with 'h'.
-        simp [Expr.eval] at h
-
-      case succ gas' =>
-        sorry
-
+  : ∃ gas', Expr.eval gas' V (Expr.addBindings ps es bd h_len) = Computation.result v :=
+  -- TODO
+  sorry
 /--
 Reducing a HeadSmallStep preserves the evaluation result.
 -/
