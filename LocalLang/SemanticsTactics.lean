@@ -46,6 +46,22 @@ def extractNatValue (e : Lean.Expr) (arg : Lean.Expr) : Option ℕ :=
 def wrapNatMetaMExpr (n : ℕ) : MetaM Lean.Expr :=
   mkAppM ``Value.nat #[Lean.Expr.lit (Lean.Literal.natVal n)]
 
+
+partial def getListElements (e : Lean.Expr) : MetaM (Option (List Lean.Expr)) := do
+  let e ← whnf e
+  if e.isAppOf ``List.cons then
+    let args := e.getAppArgs
+    let head := args[1]!
+    let tail := args[2]!
+    match ← getListElements tail with
+    | some tailElems => return some (head :: tailElems)
+    | none => return none
+  else if e.isAppOf ``List.nil then
+    return some []
+  else
+    return none
+
+
 /-
   Traverse `e` to find the next reduction step
   Return `some stx` where `stx` is the Syntax for the `Ctx` to use
@@ -239,20 +255,15 @@ macro_rules
   WIP
 -/
 partial def symbolicLookup (env : Lean.Expr) (key : String) : MetaM (Option Lean.Expr) := do
-  logInfo m!"We actually doing it? env:{env} key:{key}"
-  --let env ← whnf env
-  --logInfo m!"Wait. env:{env}"
+  logInfo m!"[SymbolicLookup]: env:{env}, key:{key}"
   if env.isAppOf ``Std.HashMap.insert then
-    -- insert _ _ _ key' value' previous_env
     let args := env.getAppArgs
-    logInfo m!"fuck: args:{args}"
-    -- i have no clue why the order is like this, sorry
+    logInfo m!"[SymbolicLookup]: args:{args}"
     let keyExpr := args[5]!
     let valExpr := args[6]!
     let rest    := args[4]!
-    logInfo m!"wowowowow: keyExpr:{keyExpr}, valExpr:{valExpr}, rest:{rest}"
+    logInfo m!"[SymbolicLookup]: keyExpr:{keyExpr}, valExpr:{valExpr}, rest:{rest}"
 
-    -- Check if keys match
     let keyExpr ← whnf keyExpr
     match keyExpr with
     | Lean.Expr.lit (Lean.Literal.strVal k) =>
@@ -361,8 +372,20 @@ partial def findAndReduce (currentEnv : Lean.Expr) (e : Lean.Expr) : MetaM (Opti
       let closureVal := func.appArg!
       let ps := closureVal.getAppArgs[0]!
       let body := closureVal.appArg!
+      let ps_expr ← getListElements ps
+      let argsList_expr ← getListElements argsList
       logInfo m!"[FAR:FUN_CALL:REDUCE]: closureVal: {closureVal}, ps: {ps}, body: {body}, argsList: {argsList}"
-      mkAppM ``Expr.addBindings #[ps, argsList, body]
+      logInfo m!"[FAR:FUN_CALL:REDUCE]: ps_expr: {ps_expr}, argsList_expr: {argsList_expr}"
+
+      match ps_expr, argsList_expr with
+      | some params, some args =>
+        let bindings := params.zip args
+        let mut res := body
+        for (name, val) in bindings do
+           res ← mkAppM ``Expr.letIn #[name, val, res]
+        return some res
+      | _, _ =>
+        return none
 
 
   -- 4. ATOMIC REDEXES (Var)

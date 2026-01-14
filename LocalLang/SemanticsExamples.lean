@@ -57,15 +57,61 @@ example : SmallSteps (Std.HashMap.insert ∅ "f" (.closure ["x", "y"] ("x" + "y"
   take_next_step
   . machine_step
   rw[to_rw]
-  sorry
-  -- take_next_step
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  rfl
 
 example : SmallSteps (Std.HashMap.insert (Std.HashMap.insert ∅ "f" (.closure ["x"] ((.funCall "g" [ "x" + 1 ]) + "x"))) "g" (.closure ["x"] "x")) (.funCall "f" [0]) 1 := by
   take_next_step
   . machine_step
   rw[to_rw]
-  sorry
-  -- take_next_step
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  take_next_step
+  . machine_step
+  rw[to_rw]
+  rfl
 
 example : SmallSteps (Std.HashMap.ofList [("x", 1)]) (.letIn "x" ("x" + 1) "x") 2 := by
   calc
