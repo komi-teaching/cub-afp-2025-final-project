@@ -21,9 +21,6 @@ theorem subcontext_insert {Γ₁ Γ₂ : TypeContext} {name : String} {ty : LLTy
 theorem empty_subcontext (Γ : TypeContext) : TypeContext.subcontext {} Γ
     := by simp [TypeContext.subcontext]
 
-theorem union_empty (Γ : TypeContext) : Γ.union {} = Γ := by
-  sorry
-
 def Disjoint (Γ₁ Γ₂ : TypeContext) : Prop :=
   ∀ x, Γ₁.contains x → ¬Γ₂.contains x
 

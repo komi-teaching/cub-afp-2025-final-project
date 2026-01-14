@@ -19,6 +19,15 @@ def respects_type_context (V : Env) (Γ : TypeContext) : Prop :=
 
 end Env
 
+-- f(x, y) = x + y
+-- let x = 5
+-- f 3 x
+-- f 3 x ~> f 3 5
+--       ~> let x = 3; let y = 5; x + y
+-- let x = 5
+-- f 3 x ~> let x = 3; let y = x; x + y
+-- f 3 x ~> addBindings [(x, 3), (y, x)] x + y
+
 theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr}
                            (bd : Expr) (ty : LLType)
                            (H_len : ps.length = es.length) (arg_types : List LLType)
@@ -43,25 +52,31 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
         unfold Expr.addBindings
         rw [qs_eq]
         rw [List.zip_eq_nil_iff] at qs_eq
-        cases qs_eq with
-        | inl h_ps_nil =>
-           rw [h_ps_nil] at h_body_gen
-           simp at h_body_gen
-           simp
-          --  rw [TypeContext.union_empty] at h_body_gen
-           sorry
-        | inr h =>
-           rw [h] at H_len
-           have := List.eq_nil_of_length_eq_zero H_len
-           subst ps
-           simp at h_body_gen
-           simp
-
-          --  rw [TypeContext.union_empty] at h_body_gen
-          --  exact h_body_gen
-           sorry
-
+        have : ps = [] ∧ es = [] ∧ arg_types = [] := sorry
+        rcases this with ⟨_, _, _⟩; subst_eqs
+        simp at *
+        apply weakening_expr (H_jdg := (by assumption))
+        apply TypeContext.empty_subcontext
       | cons head tail ih =>
+        have : ∃ p ps' e es' arg_type arg_types',
+          ps = p :: ps' ∧ es = e :: es' ∧ arg_types = arg_type :: arg_types' := sorry
+        rcases this with ⟨p, ps, e, es, arg_type, arg_types, ps_eq, es_eq, arg_types_eq⟩
+        subst_eqs
+        cases H_args with
+        | cons h_e_ty h_es_ty =>
+          unfold Expr.addBindings
+          rw [List.zip_cons_cons, List.foldl_cons]
+          apply ih
+          · simpa using H_len
+          · assumption
+          · simpa using h_len_eq
+          · apply Expr.TypeJdg.jdg_let_in (ty₁ := arg_type)
+
+
+
+
+
+
         cases ps with
         | nil => simp at qs_eq
         | cons p ps' =>
@@ -87,7 +102,7 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
                 · apply Expr.TypeJdg.jdg_let_in (ty₁ := head_arg_type)
                   · apply weakening_expr (H_jdg := h_e_typed)
                     · apply TypeContext.subset_union_left
-                      
+
                       sorry
                   · rw [List.zip_cons_cons, TypeContext.union_cons] at h_body_gen
                     exact h_body_gen
