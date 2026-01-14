@@ -103,124 +103,15 @@ lemma bindArgs_cons_eq_insert (V : Env) (p : String)
 The evaluator's behavior for `funCall` is equivalent to evaluating the `addBindings` expansion.
 This bridges the gap between the semantics (which reduce to `let`)
 and the evaluator (which updates Env).
+
+NOTE: It is actually unprovable
 -/
 theorem eval_addBindings_eq_funCall {V : Env} {ps : List String} {es : List Expr} {bd : Expr}
   {h_len : ps.length = es.length} {gas : ℕ} {v : Value}
   (h : Expr.eval gas V ((Expr.value (Value.closure ps bd)).funCall es) = Computation.result v)
   : ∃ gas', Expr.eval gas' V (Expr.addBindings ps es bd h_len) = Computation.result v := by
-  induction es generalizing ps V gas v
-  case nil =>
-    cases ps
-    case cons => contradiction
-    case nil =>
-      -- 1. Simplify the goal: addBindings [] [] bd is just bd
-      simp [Expr.addBindings]
-      exists (gas + 1)
+  sorry
 
-      -- 2. Simplify hypothesis h
-      cases gas
-      case zero => simp [Expr.eval] at h
-      case succ g =>
-        -- Unfold the monad logic
-        simp [Expr.eval, bind, pure, Computation.bind] at h
-
-        -- CRITICAL STEP: Break the stuck 'match' on the closure evaluation
-        -- This considers cases: result, fail, outOfGas.
-        -- Only 'result' will survive because h is 'result v'.
-        split at h
-
-        -- 3. Dismiss impossible cases (fail/outOfGas != result v)
-        all_goals try (simp at h; contradiction)
-
-        -- 4. Now h is clean: Expr.eval g V bd = result v.
-        --    The env is clean because bindArgs [] [] = V.
-        simp [Env.bindArgs] at h
-
-        -- 5. Use monotonicity: if it runs in g, it runs in g+1 (gas+1)
-        apply eval_monotonic h
-        apply Nat.le_succ
-
-  case cons e es' ih =>
-    cases ps
-    case nil => contradiction -- Length mismatch
-    case cons p ps' =>
-      -- Inductive step
-      -- 1. Unpack the 'funCall' evaluation from 'h'
-      --    We know it succeeds, so gas > 0.
-      cases gas
-      case zero => simp [Expr.eval] at h
-      case succ g =>
-        simp [Expr.eval, bind, pure, Computation.bind] at h
-
-        -- The evaluator maps over the arguments: e :: es'
-        -- simp [List.mapM_cons] at h
-        -- We extract the result for the head (v_head) and tail (vs_tail)
-        match h_e : Expr.eval g V e, h_es : List.mapM (fun x ↦ Expr.eval g V x) es' with
-        | Computation.result v_head, Computation.result vs_tail =>
-          -- Simplify 'h' knowing the args evaluated successfully
-          rw [h_e, h_es] at h
-          simp at h
-          -- h now says: Expr.eval g (bindArgs V ps vs) bd = result v
-
-          -- 2. Construct the goal for addBindings
-          --    addBindings (p::ps) (e::es) = let p := e in addBindings ps es ...
-          simp [Expr.addBindings]
-
-          -- We need to pick a gas amount.
-          -- We need 1 step for the outer 'let', plus enough for the rest.
-          -- We'll rely on the IH to give us the gas for the rest.
-
-          -- Apply IH to the tail (es', ps')
-          -- We need to show that funCall on the tail yields 'v' in the environment (V.insert p v_head).
-          -- Note: Standard semantics imply arguments are Values (self-evaluating) or independent.
-          -- For this proof to hold without extra assumptions, we assume 'e' eval is invariant.
-
-          have h_tail_call : Expr.eval g (V.insert p v_head) ((Expr.value (Value.closure ps' bd)).funCall es') = Computation.result v := by
-             simp [Expr.eval, bind, pure, Computation.bind]
-             -- We need to show mapM evaluates to vs_tail in the NEW env
-             -- This requires eval_list_value_irrelevant_env if es' are values.
-             -- Assuming standard reduction semantics where es are values:
-             rw [h_es] -- (This step implicitly assumes environment irrelevance for es', typical for Values)
-             -- Now we match the bindArgs logic
-             -- bindArgs (insert V p v_head) ps' vs' == bindArgs V (p::ps') (v_head::vs')
-             rw [← bindArgs_cons_eq_insert]
-             exact h
-
-          -- Now we use the IH with this new fact
-          specialize ih (h_len := (by simp at h_len; exact h_len)) h_tail_call
-          rcases ih with ⟨gas_inner, h_inner⟩
-
-          -- 3. Combine to form the total gas
-          -- We need enough gas for:
-          --   a) Evaluating 'e' (takes 'g')
-          --   b) Evaluating the body (takes 'gas_inner')
-          --   c) The 'let' step itself (takes 1)
-          let total_gas := (max g gas_inner) + 1
-          exists total_gas
-
-          -- Expand 'eval' for the 'let' expression
-          simp [Expr.eval, bind, pure, Computation.bind]
-
-          -- 3a. Prove 'e' evaluates correctly with more gas
-          have h_e_mon : Expr.eval (max g gas_inner) V e = Computation.result v_head := by
-            apply eval_monotonic h_e
-            apply Nat.le_max_left
-
-          rw [h_e_mon]
-          simp
-
-          -- 3b. Prove the body evaluates correctly with more gas
-          have h_body_mon : Expr.eval (max g gas_inner) (V.insert p v_head) (Expr.addBindings ps' es' bd _) = Computation.result v := by
-            apply eval_monotonic h_inner
-            apply Nat.le_max_right
-
-          exact h_body_mon
-
-        -- Error handling cases for the match (contradictions with success of h)
-        | Computation.fail, _ => simp [h_e] at h
-        | Computation.outOfGas, _ => simp [h_e] at h
-        | Computation.result _, Computation.fail => simp [h_e, h_es] at h
-        | Computation.result _, Computation.outOfGas => simp [h_e, h_es] at h
 /--
 Reducing a HeadSmallStep preserves the evaluation result.
 -/
