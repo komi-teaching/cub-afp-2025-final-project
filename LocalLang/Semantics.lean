@@ -4,6 +4,8 @@ import LocalLang.Ctx
 import Mathlib.Logic.Relation
 
 -- for rewriting (.funCall f es) in terms of let
+-- Meow: this doesn't work, since it means function arguments may be evaluated
+-- in the context of the function itself.
 def Expr.addBindings (ps : List String) (es : List Expr) (e : Expr)
   (_ : ps.length = es.length) : Expr :=
   (ps.zip es).foldl (fun e' (x, xe) => .letIn x xe e') e
