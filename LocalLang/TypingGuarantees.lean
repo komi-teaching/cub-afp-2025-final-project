@@ -30,7 +30,7 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
   | jdg_value h_val =>
     cases h_val with
     | jdg_closure h_body_raw h_len_eq =>
-      have h_body_gen : Expr.TypeJdg (TypeContext.union Γ (Std.HashMap.ofList (ps.zip arg_types))) bd ty := by
+      have h_body_gen : Expr.TypeJdg (Std.HashMap.union Γ (Std.HashMap.ofList (ps.zip arg_types))) bd ty := by
          apply weakening_expr
          · apply TypeContext.subset_union_right
          · exact h_body_raw
@@ -48,16 +48,18 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
            rw [h_ps_nil] at h_body_gen
            simp at h_body_gen
            simp
-           rw [TypeContext.union_empty] at h_body_gen
-           exact h_body_gen
+          --  rw [TypeContext.union_empty] at h_body_gen
+           sorry
         | inr h =>
            rw [h] at H_len
            have := List.eq_nil_of_length_eq_zero H_len
            subst ps
            simp at h_body_gen
            simp
-           rw [TypeContext.union_empty] at h_body_gen
-           exact h_body_gen
+
+          --  rw [TypeContext.union_empty] at h_body_gen
+          --  exact h_body_gen
+           sorry
 
       | cons head tail ih =>
         cases ps with
@@ -83,10 +85,10 @@ theorem addBindings_typing (Γ : TypeContext) {ps : List String} {es : List Expr
                 · exact h_es_typed
                 · simpa [List.length] using h_len_eq
                 · apply Expr.TypeJdg.jdg_let_in (ty₁ := head_arg_type)
-                  · apply weakening_expr
+                  · apply weakening_expr (H_jdg := h_e_typed)
                     · apply TypeContext.subset_union_left
+                      
                       sorry
-                    · exact h_e_typed
                   · rw [List.zip_cons_cons, TypeContext.union_cons] at h_body_gen
                     exact h_body_gen
                 · exact h_tail

@@ -21,37 +21,28 @@ theorem subcontext_insert {Γ₁ Γ₂ : TypeContext} {name : String} {ty : LLTy
 theorem empty_subcontext (Γ : TypeContext) : TypeContext.subcontext {} Γ
     := by simp [TypeContext.subcontext]
 
-def union (outer inner : TypeContext) : TypeContext :=
-  inner.fold (fun acc key val => acc.insert key val) outer
-
 theorem union_empty (Γ : TypeContext) : Γ.union {} = Γ := by
-  simp [union, Std.HashMap.fold, Std.HashMap.insert]
   sorry
 
 def Disjoint (Γ₁ Γ₂ : TypeContext) : Prop :=
   ∀ x, Γ₁.contains x → ¬Γ₂.contains x
 
 theorem union_cons (Γ : TypeContext) (k : String) (v : LLType) (tail : List (String × LLType)) :
-  TypeContext.union Γ (Std.HashMap.ofList ((k, v) :: tail)) =
-  (TypeContext.union Γ (Std.HashMap.ofList tail)).insert k v := by
+  Std.HashMap.union Γ (Std.HashMap.ofList ((k, v) :: tail)) =
+  (Std.HashMap.union Γ (Std.HashMap.ofList tail)).insert k v := by
   sorry
 
-theorem subset_union_right (ctx1 ctx2 : TypeContext) : subcontext ctx2 (union ctx1 ctx2) := by
+theorem subset_union_right (ctx1 ctx2 : TypeContext) : subcontext ctx2 (Std.HashMap.union ctx1 ctx2) := by
     intro x ty h_get
-    rw [union]
     sorry
 
-theorem subset_union_left {ctx1 ctx2 : TypeContext} (h_disj : Disjoint ctx1 ctx2) : subcontext ctx1 (union ctx1 ctx2) := by
+theorem subset_union_left {ctx1 ctx2 : TypeContext} (h_disj : Disjoint ctx1 ctx2) : subcontext ctx1 (Std.HashMap.union ctx1 ctx2) := by
   intro x ty h_get
-  rw [TypeContext.union]
 
   have h_none_ctx2 : ctx2[x]? = none := by
-    unfold Disjoint at h_disj
     specialize h_disj x
     simp [h_get] at h_disj
     sorry
-
-  rw [← h_get]
 
   sorry
 
