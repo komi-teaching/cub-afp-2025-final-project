@@ -70,6 +70,3 @@ lemma value_eq_fill_implies_hole {ctx : Ctx}
 
 lemma no_headSmallStep_from_value
   : ¬HeadSmallStep V (.value x) e := nofun
-
-lemma no_smallStep_from_value
-  : ¬SmallStep V (.value x) e := sorry
